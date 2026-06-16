@@ -445,6 +445,174 @@ def tab_hostel():
 
 
 # ════════════════════════════════════════════════════════════════════════════
+#  TAB 7 — MESSAGE TEMPLATES
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_message_templates():
+    st.subheader("Message Templates")
+    st.caption("Manage SMS and Email templates used in Blast / Campaigns modules.")
+
+    import json
+
+    msg_tab1, msg_tab2 = st.tabs(["💬 SMS Templates", "📧 Email Templates"])
+
+    # ── SMS ───────────────────────────────────────────────────
+    with msg_tab1:
+        sms_rows = (_sb().table("settings")
+                    .select("*").eq("category", "sms_template").eq("is_active", True)
+                    .order("key").execute().data)
+
+        for row in sms_rows:
+            st.markdown(f"**{row['key']}**")
+            c1, c2 = st.columns([8, 1])
+            with c1:
+                new_body = st.text_area("", value=row["value"],
+                                         key=f"sms_body_{row['id']}",
+                                         height=80,
+                                         label_visibility="collapsed",
+                                         help="Use {name}, {programme}, {dept}, {date}")
+            with c2:
+                st.write("")
+                if st.button("💾", key=f"sms_save_{row['id']}"):
+                    _sb().table("settings").update({"value": new_body}).eq("id", row["id"]).execute()
+                    _success("SMS template updated.")
+                if st.button("🗑", key=f"sms_del_{row['id']}"):
+                    _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                    _success("SMS template removed.")
+
+        st.divider()
+        st.markdown("**Add SMS Template**")
+        sa1, sa2 = st.columns([3, 1])
+        with sa1:
+            sms_new_name = st.text_input("Template name", key="sms_new_name")
+        sms_new_body = st.text_area("Message body", key="sms_new_body", height=80,
+                                     help="Use {name}, {programme}, {dept}, {date}")
+        if st.button("Add SMS Template", key="sms_add_btn"):
+            if sms_new_name.strip():
+                _sb().table("settings").insert({
+                    "category": "sms_template",
+                    "key": sms_new_name.strip(),
+                    "value": sms_new_body.strip(),
+                    "is_active": True
+                }).execute()
+                _success("SMS template added.")
+            else:
+                _error("Template name cannot be empty.")
+
+    # ── Email ─────────────────────────────────────────────────
+    with msg_tab2:
+        email_rows = (_sb().table("settings")
+                      .select("*").eq("category", "email_template").eq("is_active", True)
+                      .order("key").execute().data)
+
+        for row in email_rows:
+            st.markdown(f"**{row['key']}**")
+            try:
+                tpl = json.loads(row["value"])
+            except Exception:
+                tpl = {"subject": "", "body": row["value"]}
+
+            ec1, ec2 = st.columns([8, 1])
+            with ec1:
+                new_subj = st.text_input("Subject", value=tpl.get("subject", ""),
+                                          key=f"email_subj_{row['id']}")
+                new_body = st.text_area("Body", value=tpl.get("body", ""),
+                                         key=f"email_body_{row['id']}", height=120,
+                                         help="Use {name}, {programme}, {date}")
+            with ec2:
+                st.write("")
+                st.write("")
+                st.write("")
+                if st.button("💾", key=f"email_save_{row['id']}"):
+                    payload = json.dumps({"subject": new_subj, "body": new_body})
+                    _sb().table("settings").update({"value": payload}).eq("id", row["id"]).execute()
+                    _success("Email template updated.")
+                if st.button("🗑", key=f"email_del_{row['id']}"):
+                    _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                    _success("Email template removed.")
+            st.divider()
+
+        st.markdown("**Add Email Template**")
+        email_new_name = st.text_input("Template name", key="email_new_name")
+        email_new_subj = st.text_input("Subject", key="email_new_subj")
+        email_new_body = st.text_area("Body", key="email_new_body", height=120,
+                                       help="Use {name}, {programme}, {date}")
+        if st.button("Add Email Template", key="email_add_btn"):
+            if email_new_name.strip():
+                payload = json.dumps({"subject": email_new_subj.strip(),
+                                      "body": email_new_body.strip()})
+                _sb().table("settings").insert({
+                    "category": "email_template",
+                    "key": email_new_name.strip(),
+                    "value": payload,
+                    "is_active": True
+                }).execute()
+                _success("Email template added.")
+            else:
+                _error("Template name cannot be empty.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 8 — USER MANAGEMENT
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_users():
+    st.subheader("User Management")
+    st.caption("View and manage counselor/admin accounts. To create a new user, they must sign up via Supabase Auth first, then assign their role here.")
+
+    ROLES = ["admin", "counselor", "viewer"]
+
+    users = (_sb().table("users")
+             .select("id, email, full_name, role, is_active, created_at")
+             .order("created_at", desc=True).execute().data)
+
+    if not users:
+        st.info("No users found.")
+        return
+
+    # ── User table ────────────────────────────────────────────
+    for u in users:
+        active_icon = "🟢" if u.get("is_active") else "🔴"
+        c1, c2, c3, c4, c5 = st.columns([3, 3, 2, 1, 1])
+        with c1:
+            name_display = u.get("full_name") or ""
+            email_display = u.get("email") or ""
+            st.markdown(f"{active_icon} **{name_display}**<br><small>{email_display}</small>", unsafe_allow_html=True)
+        with c2:
+            new_name = st.text_input("", value=u.get("full_name") or "",
+                                      key=f"usr_name_{u['id']}",
+                                      label_visibility="collapsed")
+        with c3:
+            current_role = u.get("role", "counselor")
+            role_idx = ROLES.index(current_role) if current_role in ROLES else 1
+            new_role = st.selectbox("", ROLES, index=role_idx,
+                                     key=f"usr_role_{u['id']}",
+                                     label_visibility="collapsed")
+        with c4:
+            if st.button("💾", key=f"usr_save_{u['id']}"):
+                _sb().table("users").update({
+                    "full_name": new_name.strip(),
+                    "role": new_role
+                }).eq("id", u["id"]).execute()
+                _success("User updated.")
+        with c5:
+            is_active = u.get("is_active", True)
+            label = "🔴" if is_active else "🟢"
+            help_txt = "Deactivate" if is_active else "Activate"
+            if st.button(label, key=f"usr_toggle_{u['id']}", help=help_txt):
+                _sb().table("users").update({"is_active": not is_active}).eq("id", u["id"]).execute()
+                _success(f"User {'deactivated' if is_active else 'activated'}.")
+
+    st.divider()
+    st.markdown("**Invite New User**")
+    st.info(
+        "New users sign up at the app login page. "
+        "Once they register, they appear here and you can assign their role. "
+        "By default all new sign-ups are assigned the `counselor` role."
+    )
+
+
+# ════════════════════════════════════════════════════════════════════════════
 #  MAIN ENTRY POINT
 # ════════════════════════════════════════════════════════════════════════════
 
@@ -460,13 +628,15 @@ def show():
         st.warning("⚠️ This section is restricted to admins only.")
         return
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "🏫 General",
         "📋 Lookup Values",
         "💰 Fee Structure",
         "🪑 Seat Intake",
         "📄 Document Types",
-        "🏨 Hostel Blocks"
+        "🏨 Hostel Blocks",
+        "💬 Message Templates",
+        "👥 User Management"
     ])
 
     with tab1:
@@ -476,8 +646,4 @@ def show():
     with tab3:
         tab_fees()
     with tab4:
-        tab_seats()
-    with tab5:
-        tab_documents()
-    with tab6:
-        tab_hostel()
+        tab_seats
