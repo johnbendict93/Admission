@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 import io
 from datetime import date
-from db import get_supabase
-from config import MAROON, GOLD, DEPARTMENTS, PROGRAMMES, LEAD_SOURCES, APPLICANT_STATUSES
+from config import MAROON, GOLD, APPLICANT_STATUSES
+from db import get_supabase, get_lookup
 
 # Columns we accept (CSV header → DB column)
 COLUMN_MAP = {
@@ -53,6 +53,9 @@ def validate_row(row, idx):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS  = get_lookup('department')
+    PROGRAMMES   = get_lookup('programme')
+    LEAD_SOURCES = get_lookup('lead_source')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

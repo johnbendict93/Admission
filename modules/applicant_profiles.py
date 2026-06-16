@@ -2,9 +2,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import get_supabase
-from config import (MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES,
-                    CATEGORIES, LEAD_SOURCES, APPLICANT_STATUSES)
+from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
+from db import get_supabase, get_lookup
 
 GENDERS   = ["Male", "Female", "Other"]
 BLOOD_GRP = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
@@ -72,6 +71,10 @@ def load_followups(sb, applicant_id):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS  = get_lookup('department')
+    PROGRAMMES   = get_lookup('programme')
+    CATEGORIES   = get_lookup('category')
+    LEAD_SOURCES = get_lookup('lead_source')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

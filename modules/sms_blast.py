@@ -1,7 +1,6 @@
 """Module 17 — SMS / WhatsApp Blast"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
 from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES, APPLICANT_STATUSES, LEAD_SOURCES
 
 TEMPLATES = {
@@ -34,6 +33,8 @@ def load_filtered_applicants(sb, status_filter, dept_filter, source_filter):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS  = get_lookup('department')
+    LEAD_SOURCES = get_lookup('lead_source')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

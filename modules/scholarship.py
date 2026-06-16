@@ -1,21 +1,8 @@
 """Module 16 — Scholarship Management (proper scholarships table)"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, CATEGORIES
-
-SCHOLARSHIP_TYPES = [
-    "Government Scholarship (SC/ST)",
-    "BC/MBC Scholarship",
-    "Merit Scholarship",
-    "Sports Quota",
-    "Management Scholarship",
-    "Minority Scholarship",
-    "Fee Concession",
-    "Other",
-]
-SCHOLARSHIP_STATUS = ["Applied", "Under Review", "Approved", "Disbursed", "Rejected"]
-GOVT_CATS = ["SC", "SCA", "ST", "BC", "BCM", "MBC"]
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup
 
 
 def load_enrolled(sb):
@@ -44,6 +31,10 @@ def load_scholarships(sb, applicant_id=None):
 
 def show():
     sb = get_supabase()
+    SCHOLARSHIP_TYPES  = get_lookup('scholarship_type')
+    SCHOLARSHIP_STATUS = ['Applied','Under Review','Approved','Disbursed','Rejected']
+    CATEGORIES         = get_lookup('category')
+    GOVT_CATS          = ['SC','SCA','ST','BC','BCM','MBC']
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

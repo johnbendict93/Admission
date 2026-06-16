@@ -1,8 +1,8 @@
 """Module 04 — Lead Tracker (searchable live table + inline status update)"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES, DEPARTMENTS, PROGRAMMES, LEAD_SOURCES
+from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
+from db import get_supabase, get_lookup
 
 
 STATUS_COLORS = {
@@ -55,6 +55,9 @@ def load_leads(sb, filters):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS  = get_lookup('department')
+    PROGRAMMES   = get_lookup('programme')
+    LEAD_SOURCES = get_lookup('lead_source')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

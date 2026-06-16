@@ -2,8 +2,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES, CATEGORIES
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup
 
 APP_STAGES = [
     "Form Submitted", "Documents Uploaded", "Under Review",
@@ -58,6 +58,9 @@ def load_applicants(sb):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS = get_lookup('department')
+    PROGRAMMES  = get_lookup('programme')
+    CATEGORIES  = get_lookup('category')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

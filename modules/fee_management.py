@@ -3,22 +3,9 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from db import get_supabase
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_fee_structure
 
-FEE_STRUCTURE = {
-    ("B.E.",   "CSE"):   {"Tuition": 95000, "Special Fees": 15000, "Hostel": 65000},
-    ("B.E.",   "ECE"):   {"Tuition": 90000, "Special Fees": 15000, "Hostel": 65000},
-    ("B.E.",   "EEE"):   {"Tuition": 88000, "Special Fees": 15000, "Hostel": 65000},
-    ("B.E.",   "MECH"):  {"Tuition": 85000, "Special Fees": 15000, "Hostel": 65000},
-    ("B.E.",   "CIVIL"): {"Tuition": 82000, "Special Fees": 15000, "Hostel": 65000},
-    ("B.Tech", "AIDS"):  {"Tuition": 98000, "Special Fees": 18000, "Hostel": 65000},
-    ("B.Tech", "AIML"):  {"Tuition": 98000, "Special Fees": 18000, "Hostel": 65000},
-    ("B.Tech", "CSD"):   {"Tuition": 98000, "Special Fees": 18000, "Hostel": 65000},
-    ("B.E.",   "IT"):    {"Tuition": 92000, "Special Fees": 15000, "Hostel": 65000},
-    ("MBA",    "MBA"):   {"Tuition":120000, "Special Fees": 20000, "Hostel": 65000},
-    ("MCA",    "MCA"):   {"Tuition":100000, "Special Fees": 18000, "Hostel": 65000},
-}
-DEFAULT_FEE    = {"Tuition": 85000, "Special Fees": 15000, "Hostel": 65000}
 PAYMENT_MODES  = ["Cash", "DD", "Online Transfer", "UPI", "Cheque"]
 
 
@@ -46,6 +33,10 @@ def load_payments(sb, applicant_id):
 
 def show():
     sb = get_supabase()
+    FEE_STRUCTURE = get_fee_structure()
+    PROGRAMMES    = get_lookup('programme')
+    DEPARTMENTS   = get_lookup('department')
+    PAYMENT_MODES = get_lookup('payment_mode')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -66,7 +57,7 @@ def show():
         sel_prog = fc1.selectbox("Programme", PROGRAMMES, key="fs_prog")
         sel_dept = fc2.selectbox("Department", DEPARTMENTS, key="fs_dept")
 
-        fees  = FEE_STRUCTURE.get((sel_prog, sel_dept), DEFAULT_FEE)
+        fees  = FEE_STRUCTURE.get((sel_prog, sel_dept), {'Tuition': 85000, 'Special Fees': 15000, 'Hostel': 65000})
         total = sum(fees.values())
 
         rows = [{"Component": k, "Amount (₹)": f"₹{v:,.0f}"} for k, v in fees.items()]
@@ -85,7 +76,7 @@ def show():
         applicant = enrolled[chosen]
         prog      = applicant.get("programme_interested", "")
         dept      = applicant.get("department_interested", "")
-        fees      = FEE_STRUCTURE.get((prog, dept), DEFAULT_FEE)
+        fees      = FEE_STRUCTURE.get((prog, dept), {'Tuition': 85000, 'Special Fees': 15000, 'Hostel': 65000})
         total_fee = sum(fees.values())
 
         # Show existing payments summary

@@ -2,16 +2,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import get_supabase
 from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_hostel_blocks
 
-BLOCKS = {
-    "A Block (Boys)":  {"capacity": 120, "gender": "Male"},
-    "B Block (Boys)":  {"capacity": 100, "gender": "Male"},
-    "C Block (Girls)": {"capacity": 150, "gender": "Female"},
-    "D Block (Girls)": {"capacity": 100, "gender": "Female"},
-}
-ROOM_TYPES = ["Single", "Double", "Triple"]
 
 
 def load_enrolled(sb, gender=None):
@@ -52,6 +45,8 @@ def count_allotted(sb, block_name):
 
 def show():
     sb = get_supabase()
+    BLOCKS     = get_hostel_blocks()
+    ROOM_TYPES = get_lookup('room_type') or ['Single','Double','Triple']
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

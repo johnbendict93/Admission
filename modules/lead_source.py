@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import date, timedelta
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, LEAD_SOURCES, APPLICANT_STATUSES
+from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
+from db import get_supabase, get_lookup
 
 
 PALETTE = [MAROON, GOLD, "#C0392B", "#E8C97A", "#922B21",
@@ -34,6 +34,7 @@ def empty(msg="No data yet."):
 
 def show():
     sb = get_supabase()
+    LEAD_SOURCES = get_lookup('lead_source')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

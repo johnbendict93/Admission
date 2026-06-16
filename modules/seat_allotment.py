@@ -1,15 +1,8 @@
 """Module 14 — Seat Allotment"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES, CATEGORIES
-
-# Seat intake per department (configurable)
-SEAT_INTAKE = {
-    "CSE": 120, "ECE": 60, "EEE": 60, "MECH": 60,
-    "CIVIL": 60, "IT": 60, "AIDS": 60, "AIML": 60,
-    "CSD": 60, "MBA": 60, "MCA": 30,
-}
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_seat_intake
 
 
 def load_allotment_summary(sb):
@@ -39,6 +32,10 @@ def load_merit_applicants(sb, dept, programme):
 
 def show():
     sb = get_supabase()
+    SEAT_INTAKE  = get_seat_intake()
+    DEPARTMENTS  = get_lookup('department')
+    PROGRAMMES   = get_lookup('programme')
+    CATEGORIES   = get_lookup('category')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

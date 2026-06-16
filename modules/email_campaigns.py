@@ -1,8 +1,8 @@
 """Module 18 — Email Campaigns"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES, DEPARTMENTS
+from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
+from db import get_supabase, get_lookup
 
 EMAIL_TEMPLATES = {
     "Open Day Invite": {
@@ -56,6 +56,7 @@ def load_recipients(sb, status_filter, dept_filter):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS = get_lookup('department')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

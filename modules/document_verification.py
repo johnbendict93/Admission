@@ -1,21 +1,8 @@
 """Module 08 — Document Verification"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
 from config import MAROON, GOLD, CREAM
-
-DOCUMENTS = [
-    "10th Mark Sheet",
-    "12th / HSC Mark Sheet",
-    "Transfer Certificate (TC)",
-    "Community Certificate",
-    "Income Certificate",
-    "Aadhar Card",
-    "Passport Photo (4 copies)",
-    "Conduct Certificate",
-    "Migration Certificate (if applicable)",
-    "Medical Fitness Certificate",
-]
+from db import get_supabase, get_document_types
 
 DOC_STATUS = ["Not Submitted", "Submitted", "Verified", "Rejected"]
 
@@ -65,6 +52,7 @@ def save_doc_status(sb, applicant_id, doc_data):
 
 def show():
     sb = get_supabase()
+    DOCUMENTS = get_document_types()
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

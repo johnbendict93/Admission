@@ -1,8 +1,8 @@
 """Module 09 — Merit List"""
 import streamlit as st
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES, CATEGORIES
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup
 
 
 def load_merit_data(sb, programme, department, category):
@@ -31,6 +31,9 @@ def load_merit_data(sb, programme, department, category):
 
 def show():
     sb = get_supabase()
+    DEPARTMENTS = get_lookup('department')
+    PROGRAMMES  = get_lookup('programme')
+    CATEGORIES  = get_lookup('category')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
