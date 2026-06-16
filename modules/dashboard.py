@@ -3,8 +3,8 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from db import get_supabase
-from config import MAROON, GOLD, APPLICANT_STATUSES, DEPARTMENTS
+from db import get_supabase, get_seat_intake
+from config import MAROON, GOLD, APPLICANT_STATUSES
 
 def fetch_kpis(sb):
     try:
@@ -21,7 +21,13 @@ def fetch_kpis(sb):
             .eq("status", "Pending").execute().count or 0
     except:
         pending_fu = 0
-    return total, enrolled, pending_fu
+    try:
+        intake = get_seat_intake()   # {dept: capacity} from Supabase
+        total_seats = sum(intake.values())
+        open_seats = max(0, total_seats - enrolled)
+    except:
+        open_seats = 0
+    return total, enrolled, pending_fu, open_seats
 
 def fetch_pipeline(sb):
     try:
@@ -71,15 +77,15 @@ def fetch_todays_followups(sb):
 
 def show():
     sb = get_supabase()
-    total, enrolled, pending_fu = fetch_kpis(sb)
+    total, enrolled, pending_fu, open_seats = fetch_kpis(sb)
 
     # ── KPI row ──────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns(4)
     kpis = [
-        (c1, "👤", str(total),      "Total Applicants"),
-        (c2, "✅", str(enrolled),   "Enrolled"),
-        (c3, "🔔", str(pending_fu), "Pending Follow-ups"),
-        (c4, "🪑", "—",             "Open Seats"),
+        (c1, "👤", str(total),       "Total Applicants"),
+        (c2, "✅", str(enrolled),    "Enrolled"),
+        (c3, "🔔", str(pending_fu),  "Pending Follow-ups"),
+        (c4, "🪑", str(open_seats),  "Open Seats"),
     ]
     for col, icon, val, label in kpis:
         with col:
