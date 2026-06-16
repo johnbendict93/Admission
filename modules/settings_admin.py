@@ -1,159 +1,483 @@
-"""Module 22 — Settings & Admin"""
+"""
+Settings & Admin — 100% Dynamic Control Panel
+Manages: General Settings, Lookup Values, Fee Structure,
+         Seat Intake, Document Types, Hostel Blocks
+All data lives in Supabase. Cache cleared after every change.
+"""
+
 import streamlit as st
-import pandas as pd
-from db import get_supabase
-from config import (MAROON, GOLD, CREAM, COLLEGE_NAME, ACADEMIC_YEAR,
-                    DEPARTMENTS, PROGRAMMES, MODULES)
+from db import get_supabase, get_lookup, clear_config_cache
+from config import MAROON, GOLD, CREAM
 
-ROLES = ["admin","counselor","staff","viewer"]
+# ── helpers ─────────────────────────────────────────────────────────────────
+
+def _sb():
+    return get_supabase()
 
 
-def load_users(sb):
-    try:
-        return sb.table("users").select("*").order("created_at").execute().data or []
-    except Exception as e:
-        st.error(f"Error loading users: {e}")
-        return []
+def _success(msg: str):
+    clear_config_cache()
+    st.success(msg)
+    st.rerun()
 
+
+def _error(msg: str):
+    st.error(msg)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 1 — GENERAL SETTINGS
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_general():
+    st.subheader("General Settings")
+
+    rows = (_sb().table("settings")
+            .select("*").eq("category", "general").eq("is_active", True)
+            .order("key").execute().data)
+
+    if not rows:
+        st.info("No general settings found. Add one below.")
+
+    for row in rows:
+        col1, col2, col3 = st.columns([3, 4, 1])
+        with col1:
+            st.text(row["key"])
+        with col2:
+            new_val = st.text_input("", value=row["value"],
+                                    key=f"gen_val_{row['id']}",
+                                    label_visibility="collapsed")
+        with col3:
+            if st.button("💾", key=f"gen_save_{row['id']}"):
+                _sb().table("settings").update({"value": new_val}).eq("id", row["id"]).execute()
+                _success("Setting updated.")
+            if st.button("🗑", key=f"gen_del_{row['id']}"):
+                _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                _success("Setting removed.")
+
+    st.divider()
+    st.markdown("**Add New Setting**")
+    c1, c2, c3 = st.columns([3, 4, 1])
+    with c1:
+        new_key = st.text_input("Key", key="gen_new_key")
+    with c2:
+        new_val2 = st.text_input("Value", key="gen_new_val")
+    with c3:
+        st.write("")
+        st.write("")
+        if st.button("Add", key="gen_add"):
+            if new_key.strip():
+                _sb().table("settings").insert({
+                    "category": "general",
+                    "key": new_key.strip(),
+                    "value": new_val2.strip(),
+                    "is_active": True
+                }).execute()
+                _success("Setting added.")
+            else:
+                _error("Key cannot be empty.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 2 — LOOKUP VALUES
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_lookups():
+    st.subheader("Lookup Values")
+    st.caption("Manages all dropdowns: departments, programmes, categories, lead sources, genders, blood groups, payment modes, scholarship types, etc.")
+
+    all_rows = (_sb().table("lookup_values")
+                .select("*").eq("is_active", True)
+                .order("type").order("sort_order").execute().data)
+    all_types = sorted(set(r["type"] for r in all_rows))
+
+    # add a new type
+    with st.expander("➕ Create new lookup type"):
+        nt1, nt2 = st.columns(2)
+        with nt1:
+            new_type_name = st.text_input("Type name (snake_case)", key="new_type_name")
+        with nt2:
+            new_type_val = st.text_input("First value", key="new_type_val")
+        if st.button("Create", key="new_type_btn"):
+            if new_type_name.strip() and new_type_val.strip():
+                _sb().table("lookup_values").insert({
+                    "type": new_type_name.strip().lower().replace(" ", "_"),
+                    "value": new_type_val.strip(),
+                    "sort_order": 1,
+                    "is_active": True
+                }).execute()
+                _success("New lookup type created.")
+            else:
+                _error("Both type name and first value are required.")
+
+    st.divider()
+
+    if not all_types:
+        st.info("No lookup types yet. Create one above.")
+        return
+
+    selected_type = st.selectbox("Lookup type", all_types, key="sel_lookup_type")
+    type_rows = [r for r in all_rows if r["type"] == selected_type]
+
+    # header row
+    hc1, hc2, hc3, hc4 = st.columns([5, 2, 1, 1])
+    hc1.markdown("**Value**")
+    hc2.markdown("**Order**")
+
+    for row in type_rows:
+        c1, c2, c3, c4 = st.columns([5, 2, 1, 1])
+        with c1:
+            new_v = st.text_input("", value=row["value"],
+                                   key=f"lv_val_{row['id']}",
+                                   label_visibility="collapsed")
+        with c2:
+            new_so = st.number_input("", value=row["sort_order"], min_value=1,
+                                      key=f"lv_so_{row['id']}",
+                                      label_visibility="collapsed")
+        with c3:
+            if st.button("💾", key=f"lv_save_{row['id']}"):
+                _sb().table("lookup_values").update({
+                    "value": new_v.strip(),
+                    "sort_order": int(new_so)
+                }).eq("id", row["id"]).execute()
+                _success("Value updated.")
+        with c4:
+            if st.button("🗑", key=f"lv_del_{row['id']}"):
+                _sb().table("lookup_values").update({"is_active": False}).eq("id", row["id"]).execute()
+                _success("Value removed.")
+
+    st.divider()
+    st.markdown(f"**Add value to `{selected_type}`**")
+    ca, cb, cc = st.columns([5, 2, 1])
+    with ca:
+        add_val = st.text_input("Value", key="lv_add_val")
+    with cb:
+        add_so = st.number_input("Order", value=len(type_rows) + 1, min_value=1, key="lv_add_so")
+    with cc:
+        st.write("")
+        st.write("")
+        if st.button("Add", key="lv_add_btn"):
+            if add_val.strip():
+                _sb().table("lookup_values").insert({
+                    "type": selected_type,
+                    "value": add_val.strip(),
+                    "sort_order": int(add_so),
+                    "is_active": True
+                }).execute()
+                _success("Value added.")
+            else:
+                _error("Value cannot be empty.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 3 — FEE STRUCTURE
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_fees():
+    st.subheader("Fee Structure")
+    st.caption("Key stored as `Programme|Department|Component` → Amount (₹)")
+
+    rows = (_sb().table("settings")
+            .select("*").eq("category", "fee").eq("is_active", True)
+            .order("key").execute().data)
+
+    parsed = []
+    for r in rows:
+        parts = r["key"].split("|")
+        if len(parts) == 3:
+            parsed.append({**r, "prog": parts[0], "dept": parts[1], "comp": parts[2]})
+
+    progs = sorted(set(p["prog"] for p in parsed))
+    sel_prog = st.selectbox("Filter by Programme", ["All"] + progs, key="fee_filter_prog")
+    filtered = parsed if sel_prog == "All" else [p for p in parsed if p["prog"] == sel_prog]
+
+    if filtered:
+        hf1, hf2, hf3, hf4, hf5 = st.columns([3, 3, 3, 2, 1])
+        hf1.markdown("**Programme**")
+        hf2.markdown("**Department**")
+        hf3.markdown("**Component**")
+        hf4.markdown("**Amount ₹**")
+
+        for row in filtered:
+            c1, c2, c3, c4, c5 = st.columns([3, 3, 3, 2, 1])
+            c1.text(row["prog"])
+            c2.text(row["dept"])
+            c3.text(row["comp"])
+            with c4:
+                new_amt = st.text_input("", value=row["value"],
+                                         key=f"fee_amt_{row['id']}",
+                                         label_visibility="collapsed")
+            with c5:
+                if st.button("💾", key=f"fee_save_{row['id']}"):
+                    try:
+                        float(new_amt)
+                        _sb().table("settings").update({"value": new_amt.strip()}).eq("id", row["id"]).execute()
+                        _success("Fee updated.")
+                    except ValueError:
+                        _error("Amount must be a number.")
+                if st.button("🗑", key=f"fee_del_{row['id']}"):
+                    _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                    _success("Fee entry removed.")
+    else:
+        st.info("No fee entries found.")
+
+    st.divider()
+    st.markdown("**Add Fee Entry**")
+    progs_all = get_lookup("programme")
+    depts_all = get_lookup("department")
+    # components fetched from lookup if exist, else default list
+    comps_all = get_lookup("fee_component") or ["Tuition", "Hostel", "Transport", "Exam", "Lab", "Library", "Miscellaneous"]
+
+    col1, col2, col3, col4, col5 = st.columns([3, 3, 3, 2, 1])
+    with col1:
+        fp = st.selectbox("Programme", progs_all, key="fee_new_prog")
+    with col2:
+        fd = st.selectbox("Department", depts_all, key="fee_new_dept")
+    with col3:
+        fc = st.selectbox("Component", comps_all, key="fee_new_comp")
+    with col4:
+        fa = st.text_input("Amount ₹", key="fee_new_amt")
+    with col5:
+        st.write("")
+        st.write("")
+        if st.button("Add", key="fee_add_btn"):
+            key_str = f"{fp}|{fd}|{fc}"
+            try:
+                float(fa)
+                exists = (_sb().table("settings")
+                          .select("id").eq("category", "fee").eq("key", key_str).eq("is_active", True)
+                          .execute().data)
+                if exists:
+                    _error("Entry already exists. Edit it above.")
+                else:
+                    _sb().table("settings").insert({
+                        "category": "fee", "key": key_str,
+                        "value": fa.strip(), "is_active": True
+                    }).execute()
+                    _success("Fee entry added.")
+            except ValueError:
+                _error("Amount must be a number.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 4 — SEAT INTAKE
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_seats():
+    st.subheader("Seat Intake")
+    st.caption("Approved seat capacity per department.")
+
+    rows = (_sb().table("settings")
+            .select("*").eq("category", "seat_intake").eq("is_active", True)
+            .order("key").execute().data)
+
+    for row in rows:
+        c1, c2, c3 = st.columns([5, 3, 1])
+        with c1:
+            st.text(row["key"])
+        with c2:
+            cap_val = int(row["value"]) if str(row["value"]).isdigit() else 60
+            new_cap = st.number_input("", value=cap_val, min_value=0,
+                                       key=f"seat_{row['id']}",
+                                       label_visibility="collapsed")
+        with c3:
+            if st.button("💾", key=f"seat_save_{row['id']}"):
+                _sb().table("settings").update({"value": str(new_cap)}).eq("id", row["id"]).execute()
+                _success("Seat intake updated.")
+            if st.button("🗑", key=f"seat_del_{row['id']}"):
+                _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                _success("Entry removed.")
+
+    st.divider()
+    st.markdown("**Add Department**")
+    depts_all = get_lookup("department")
+    existing_depts = {r["key"] for r in rows}
+    available = [d for d in depts_all if d not in existing_depts]
+
+    if available:
+        sa1, sa2, sa3 = st.columns([5, 3, 1])
+        with sa1:
+            new_dept = st.selectbox("Department", available, key="seat_new_dept")
+        with sa2:
+            new_cap2 = st.number_input("Seats", value=60, min_value=0, key="seat_new_cap")
+        with sa3:
+            st.write("")
+            st.write("")
+            if st.button("Add", key="seat_add_btn"):
+                _sb().table("settings").insert({
+                    "category": "seat_intake", "key": new_dept,
+                    "value": str(new_cap2), "is_active": True
+                }).execute()
+                _success("Seat intake added.")
+    else:
+        st.info("All departments already have seat intake defined.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 5 — DOCUMENT TYPES
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_documents():
+    st.subheader("Document Types")
+    st.caption("Required / optional documents for applicant verification.")
+
+    rows = (_sb().table("document_types")
+            .select("*").eq("is_active", True)
+            .order("sort_order").execute().data)
+
+    for row in rows:
+        c1, c2, c3, c4 = st.columns([5, 2, 1, 1])
+        with c1:
+            new_name = st.text_input("", value=row["name"],
+                                      key=f"doc_name_{row['id']}",
+                                      label_visibility="collapsed")
+        with c2:
+            new_req = st.checkbox("Required", value=row.get("is_required", False),
+                                   key=f"doc_req_{row['id']}")
+        with c3:
+            if st.button("💾", key=f"doc_save_{row['id']}"):
+                _sb().table("document_types").update({
+                    "name": new_name.strip(), "is_required": new_req
+                }).eq("id", row["id"]).execute()
+                _success("Document type updated.")
+        with c4:
+            if st.button("🗑", key=f"doc_del_{row['id']}"):
+                _sb().table("document_types").update({"is_active": False}).eq("id", row["id"]).execute()
+                _success("Document type removed.")
+
+    st.divider()
+    st.markdown("**Add Document Type**")
+    da1, da2, da3 = st.columns([5, 2, 1])
+    with da1:
+        add_doc_name = st.text_input("Document name", key="doc_add_name")
+    with da2:
+        add_doc_req = st.checkbox("Required", key="doc_add_req")
+    with da3:
+        st.write("")
+        st.write("")
+        if st.button("Add", key="doc_add_btn"):
+            if add_doc_name.strip():
+                next_order = max((r["sort_order"] for r in rows), default=0) + 1
+                _sb().table("document_types").insert({
+                    "name": add_doc_name.strip(),
+                    "is_required": add_doc_req,
+                    "sort_order": next_order,
+                    "is_active": True
+                }).execute()
+                _success("Document type added.")
+            else:
+                _error("Document name cannot be empty.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  TAB 6 — HOSTEL BLOCKS
+# ════════════════════════════════════════════════════════════════════════════
+
+def tab_hostel():
+    st.subheader("Hostel Blocks")
+    st.caption("Key: `Block Name|Gender` → Capacity")
+
+    rows = (_sb().table("settings")
+            .select("*").eq("category", "hostel_block").eq("is_active", True)
+            .order("key").execute().data)
+
+    for row in rows:
+        parts = row["key"].split("|")
+        block_name = parts[0] if len(parts) > 0 else row["key"]
+        gender = parts[1] if len(parts) > 1 else "Male"
+        gender_opts = ["Male", "Female", "Mixed"]
+        gender_idx = gender_opts.index(gender) if gender in gender_opts else 0
+
+        c1, c2, c3, c4, c5 = st.columns([3, 2, 2, 1, 1])
+        with c1:
+            new_block = st.text_input("", value=block_name,
+                                       key=f"hb_name_{row['id']}",
+                                       label_visibility="collapsed")
+        with c2:
+            new_gender = st.selectbox("", gender_opts, index=gender_idx,
+                                       key=f"hb_gender_{row['id']}",
+                                       label_visibility="collapsed")
+        with c3:
+            cap_val = int(row["value"]) if str(row["value"]).isdigit() else 0
+            new_cap = st.number_input("", value=cap_val, min_value=0,
+                                       key=f"hb_cap_{row['id']}",
+                                       label_visibility="collapsed")
+        with c4:
+            if st.button("💾", key=f"hb_save_{row['id']}"):
+                _sb().table("settings").update({
+                    "key": f"{new_block.strip()}|{new_gender}",
+                    "value": str(new_cap)
+                }).eq("id", row["id"]).execute()
+                _success("Hostel block updated.")
+        with c5:
+            if st.button("🗑", key=f"hb_del_{row['id']}"):
+                _sb().table("settings").update({"is_active": False}).eq("id", row["id"]).execute()
+                _success("Hostel block removed.")
+
+    st.divider()
+    st.markdown("**Add Hostel Block**")
+    hb1, hb2, hb3, hb4 = st.columns([3, 2, 2, 1])
+    with hb1:
+        hb_name = st.text_input("Block Name", key="hb_add_name")
+    with hb2:
+        hb_gender = st.selectbox("Gender", ["Male", "Female", "Mixed"], key="hb_add_gender")
+    with hb3:
+        hb_cap = st.number_input("Capacity", value=100, min_value=0, key="hb_add_cap")
+    with hb4:
+        st.write("")
+        st.write("")
+        if st.button("Add", key="hb_add_btn"):
+            if hb_name.strip():
+                key_str = f"{hb_name.strip()}|{hb_gender}"
+                exists = (_sb().table("settings")
+                          .select("id").eq("category", "hostel_block").eq("key", key_str).eq("is_active", True)
+                          .execute().data)
+                if exists:
+                    _error(f"Block '{key_str}' already exists.")
+                else:
+                    _sb().table("settings").insert({
+                        "category": "hostel_block", "key": key_str,
+                        "value": str(hb_cap), "is_active": True
+                    }).execute()
+                    _success("Hostel block added.")
+            else:
+                _error("Block name cannot be empty.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  MAIN ENTRY POINT
+# ════════════════════════════════════════════════════════════════════════════
 
 def show():
-    sb = get_supabase()
-
     st.markdown(f"""
-    <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
-         padding:18px 24px;border-radius:10px;margin-bottom:20px;'>
-        <h2 style='color:{GOLD};margin:0;'>⚙️ Settings & Admin</h2>
-        <p style='color:#F5F0E8;margin:4px 0 0;font-size:0.9rem;'>
-            System configuration, user management, and integrations.
-        </p>
-    </div>""", unsafe_allow_html=True)
+        <h2 style='color:{MAROON}; border-bottom: 2px solid {GOLD}; padding-bottom:8px;'>
+            ⚙️ Settings & Admin
+        </h2>
+    """, unsafe_allow_html=True)
 
-    tab_general, tab_users, tab_db, tab_integrations = st.tabs(
-        ["🏫 General", "👥 Users", "🗄️ Database", "🔌 Integrations"])
+    user = st.session_state.get("auth_user", {})
+    if user.get("role") != "admin":
+        st.warning("⚠️ This section is restricted to admins only.")
+        return
 
-    # ── General ───────────────────────────────────────────────
-    with tab_general:
-        st.subheader("College Information")
-        st.markdown(f"**College Name:** {COLLEGE_NAME}")
-        st.markdown(f"**Academic Year:** {ACADEMIC_YEAR}")
-        st.markdown(f"**Supabase URL:** Connected ✅")
-        st.divider()
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🏫 General",
+        "📋 Lookup Values",
+        "💰 Fee Structure",
+        "🪑 Seat Intake",
+        "📄 Document Types",
+        "🏨 Hostel Blocks"
+    ])
 
-        st.subheader("Module Registry")
-        st.markdown(f"**Total Modules:** {len(MODULES)}")
-        mod_df = pd.DataFrame(MODULES, columns=["Name","Icon","File","Section"])
-        mod_df["File"] = mod_df["File"].apply(lambda f: f"modules/{f}.py")
-        st.dataframe(mod_df[["Section","Name","Icon","File"]],
-                     use_container_width=True, hide_index=True)
-
-        st.divider()
-        st.subheader("Departments & Programmes")
-        dc1, dc2 = st.columns(2)
-        dc1.markdown("**Departments:** " + " · ".join(DEPARTMENTS))
-        dc2.markdown("**Programmes:** " + " · ".join(PROGRAMMES))
-
-    # ── User management ───────────────────────────────────────
-    with tab_users:
-        users = load_users(sb)
-        st.subheader(f"Users ({len(users)})")
-
-        if users:
-            df = pd.DataFrame(users)[["full_name","email","role","is_active","created_at"]]
-            df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y")
-            df.columns = ["Name","Email","Role","Active","Created"]
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.info("No users yet. Add your first user below.")
-
-        st.divider()
-        st.subheader("Add User")
-        with st.form("add_user_form", clear_on_submit=True):
-            uc1, uc2 = st.columns(2)
-            u_name  = uc1.text_input("Full Name *")
-            u_email = uc2.text_input("Email *")
-            uc3, uc4 = st.columns(2)
-            u_role   = uc3.selectbox("Role", ROLES)
-            u_active = uc4.checkbox("Active", value=True)
-
-            if st.form_submit_button("➕ Add User", type="primary"):
-                if not u_name.strip() or not u_email.strip():
-                    st.error("Name and Email are required.")
-                else:
-                    try:
-                        sb.table("users").insert({
-                            "full_name": u_name.strip(),
-                            "email":     u_email.strip(),
-                            "role":      u_role,
-                            "is_active": u_active,
-                        }).execute()
-                        st.success(f"✅ User {u_name} added as {u_role}.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Failed: {e}")
-
-    # ── Database ──────────────────────────────────────────────
-    with tab_db:
-        st.subheader("Live Table Counts")
-        tables = {
-            "applicants":         "👤 Applicants",
-            "applications":       "📝 Applications",
-            "counseling_sessions":"🗣️ Sessions",
-            "follow_ups":         "🔔 Follow-ups",
-            "users":              "👥 Users",
-        }
-        cols = st.columns(len(tables))
-        for col, (tbl, label) in zip(cols, tables.items()):
-            try:
-                count = sb.table(tbl).select("id", count="exact").execute().count or 0
-            except:
-                count = "—"
-            with col:
-                st.markdown(
-                    f"<div class='metric-card'><h3>{count}</h3><p>{label}</p></div>",
-                    unsafe_allow_html=True)
-
-        st.divider()
-        st.subheader("Danger Zone")
-        st.error("⚠️ These actions are irreversible. Use with caution.")
-        with st.expander("🗑️ Clear Test Data"):
-            st.warning("This will delete ALL applicants and related records where "
-                       "full_name contains 'Test' or 'test'.")
-            if st.button("Delete Test Records", type="secondary"):
-                try:
-                    sb.table("applicants").delete()\
-                        .ilike("full_name", "%test%").execute()
-                    st.success("Test records deleted.")
-                except Exception as e:
-                    st.error(f"Failed: {e}")
-
-    # ── Integrations ──────────────────────────────────────────
-    with tab_integrations:
-        st.subheader("Integration Status")
-
-        integrations = [
-            ("Supabase (Database)",  True,  "Connected — data stored at agfmeefnfzsrpyzwejtt.supabase.co"),
-            ("SMS Gateway (MSG91)",  False, "Not configured — add API key below"),
-            ("WhatsApp (Twilio)",    False, "Not configured"),
-            ("Email (SMTP/SendGrid)",False, "Not configured"),
-            ("Google Calendar",      False, "Not configured"),
-        ]
-        for name, connected, note in integrations:
-            status = "✅ Connected" if connected else "❌ Not Connected"
-            color  = "#27AE60" if connected else "#E74C3C"
-            st.markdown(
-                f"<div style='border:1px solid {color};border-radius:8px;"
-                f"padding:10px 14px;margin:6px 0;'>"
-                f"<b>{name}</b> &nbsp; <span style='color:{color};'>{status}</span><br>"
-                f"<small style='color:#666;'>{note}</small></div>",
-                unsafe_allow_html=True
-            )
-
-        st.divider()
-        st.subheader("Add SMS API Key")
-        with st.form("sms_config"):
-            provider = st.selectbox("Provider", ["MSG91","2Factor","Twilio","Other"])
-            api_key  = st.text_input("API Key", type="password")
-            sender   = st.text_input("Sender ID / From Number")
-            if st.form_submit_button("Save API Config"):
-                st.info("API key storage not yet implemented — "
-                        "add keys to .streamlit/secrets.toml and restart the app.")
+    with tab1:
+        tab_general()
+    with tab2:
+        tab_lookups()
+    with tab3:
+        tab_fees()
+    with tab4:
+        tab_seats()
+    with tab5:
+        tab_documents()
+    with tab6:
+        tab_hostel()
