@@ -1,16 +1,9 @@
-"""Module 17 — SMS / WhatsApp Blast"""
+"""Module 17 — SMS / WhatsApp Blast (100% dynamic — templates from Supabase)"""
 import streamlit as st
 import pandas as pd
-from config import MAROON, GOLD, CREAM, DEPARTMENTS, PROGRAMMES, APPLICANT_STATUSES, LEAD_SOURCES
-
-TEMPLATES = {
-    "Walk-in Invitation": "Dear {name}, DCE Open Day is on {date}. Visit us at Tambaram and explore {programme}. Call: 044-XXXXXXXX",
-    "Follow-up Reminder": "Dear {name}, Thank you for visiting DCE. Your application for {programme} is pending. Call us: 044-XXXXXXXX",
-    "Seat Confirmation":  "Dear {name}, Congratulations! Your seat in {programme} – {dept} at DCE is confirmed. Complete formalities by {date}.",
-    "Fee Reminder":       "Dear {name}, Your fee for {programme} is due. Pay before {date} to secure your seat. DCE Admissions.",
-    "Document Reminder":  "Dear {name}, Kindly submit your pending documents at DCE admission office at the earliest. DCE Admissions.",
-    "Custom":             "",
-}
+from datetime import date
+from config import MAROON, GOLD, APPLICANT_STATUSES
+from db import get_supabase, get_lookup, get_settings_by_category
 
 
 def load_filtered_applicants(sb, status_filter, dept_filter, source_filter):
@@ -27,14 +20,26 @@ def load_filtered_applicants(sb, status_filter, dept_filter, source_filter):
             q = q.in_("lead_source", source_filter)
         return q.execute().data or []
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error loading recipients: {e}")
         return []
+
+
+def load_sms_templates(sb) -> dict:
+    """Load SMS templates dynamically from settings table."""
+    try:
+        rows = sb.table("settings").select("key, value") \
+            .eq("category", "sms_template").eq("is_active", True) \
+            .order("key").execute().data or []
+        return {r["key"]: r["value"] for r in rows}
+    except:
+        return {"Custom": ""}
 
 
 def show():
     sb = get_supabase()
-    DEPARTMENTS  = get_lookup('department')
-    LEAD_SOURCES = get_lookup('lead_source')
+    DEPARTMENTS  = get_lookup("department")
+    LEAD_SOURCES = get_lookup("lead_source")
+    templates    = load_sms_templates(sb)
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -52,55 +57,69 @@ def show():
     f_dept   = fc2.multiselect("By Department",  DEPARTMENTS)
     f_source = fc3.multiselect("By Lead Source", LEAD_SOURCES)
 
-    recipients = load_filtered_applicants(sb, f_status or None,
-                                          f_dept or None, f_source or None)
+    recipients = load_filtered_applicants(
+        sb,
+        f_status or None,
+        f_dept   or None,
+        f_source or None
+    )
     st.markdown(f"**{len(recipients)} recipient(s) selected**")
 
     if recipients:
         with st.expander("Preview recipient list"):
-            df = pd.DataFrame(recipients)[["reg_number","full_name","mobile","status"]]
-            df.columns = ["Reg No","Name","Mobile","Status"]
+            df = pd.DataFrame(recipients)[["reg_number", "full_name", "mobile", "status"]]
+            df.columns = ["Reg No", "Name", "Mobile", "Status"]
             st.dataframe(df, use_container_width=True, hide_index=True)
 
     st.divider()
 
     # ── Step 2: Message ───────────────────────────────────────
     st.subheader("Step 2 — Compose Message")
-    channel  = st.radio("Channel", ["SMS","WhatsApp"], horizontal=True)
-    template = st.selectbox("Template", list(TEMPLATES.keys()))
+    channel  = st.radio("Channel", ["SMS", "WhatsApp"], horizontal=True)
 
-    default_msg = TEMPLATES[template]
-    message = st.text_area("Message *", value=default_msg, height=120,
-                            max_chars=500,
-                            placeholder="Use {name}, {programme}, {dept}, {date} as placeholders")
+    template_names = list(templates.keys()) if templates else ["Custom"]
+    template_sel   = st.selectbox("Template", template_names)
+    default_msg    = templates.get(template_sel, "")
+
+    message = st.text_area(
+        "Message *", value=default_msg, height=120, max_chars=500,
+        help="Use {name}, {programme}, {dept}, {date} as dynamic placeholders"
+    )
     char_count = len(message)
     sms_count  = (char_count // 160) + 1
     st.caption(f"{char_count}/500 chars · ~{sms_count} SMS credit(s) per recipient")
 
     st.divider()
 
-    # ── Step 3: Send (preview mode) ───────────────────────────
-    st.subheader("Step 3 — Review & Send")
-    if recipients:
+    # ── Step 3: Preview & Send ────────────────────────────────
+    st.subheader("Step 3 — Preview & Send")
+    if recipients and message.strip():
         sample = recipients[0]
-        preview_msg = message\
-            .replace("{name}", sample["full_name"])\
-            .replace("{programme}", sample.get("programme_interested",""))\
-            .replace("{dept}", sample.get("department_interested",""))\
-            .replace("{date}", "30 Jun 2026")
+        preview_msg = message \
+            .replace("{name}",      sample["full_name"]) \
+            .replace("{programme}", sample.get("programme_interested", "")) \
+            .replace("{dept}",      sample.get("department_interested", "")) \
+            .replace("{date}",      date.today().strftime("%d %b %Y"))
         st.markdown("**Preview (first recipient):**")
         st.info(preview_msg)
 
-    st.warning("⚠️ This module is ready for integration with an SMS/WhatsApp API "
-               "(e.g. Twilio, MSG91, 2Factor). Connect your API key in Settings to enable actual sending.")
+    st.warning(
+        "⚠️ This module is ready for SMS/WhatsApp API integration "
+        "(e.g. Twilio, MSG91, 2Factor). Add your API credentials in Settings & Admin → General."
+    )
 
     col_send, col_export = st.columns(2)
-    if col_send.button(f"🚀 Send {channel} to {len(recipients)} Recipient(s)",
-                       type="primary", use_container_width=True,
-                       disabled=not recipients or not message.strip()):
-        st.info("📡 API integration needed — configure your SMS/WhatsApp provider in Settings & Admin.")
+    if col_send.button(
+        f"🚀 Send {channel} to {len(recipients)} Recipient(s)",
+        type="primary", use_container_width=True,
+        disabled=not recipients or not message.strip()
+    ):
+        st.info("📡 SMS/WhatsApp API not yet configured — add credentials in Settings & Admin.")
 
-    if recipients and col_export.button("⬇️ Export Numbers (CSV)", use_container_width=True):
-        df_exp = pd.DataFrame(recipients)[["full_name","mobile","status"]]
-        csv = df_exp.to_csv(index=False).encode("utf-8")
-        st.download_button("Download", csv, "recipients.csv", "text/csv")
+    if recipients:
+        df_exp = pd.DataFrame(recipients)[["full_name", "mobile", "status"]]
+        csv    = df_exp.to_csv(index=False).encode("utf-8")
+        col_export.download_button(
+            "⬇️ Export Numbers (CSV)", csv, "recipients.csv", "text/csv",
+            use_container_width=True
+        )

@@ -1,41 +1,29 @@
-"""Module 18 — Email Campaigns"""
+"""Module 18 — Email Campaigns (100% dynamic — templates from Supabase)"""
 import streamlit as st
 import pandas as pd
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
+import json
+from datetime import date
+from config import MAROON, GOLD, APPLICANT_STATUSES
 from db import get_supabase, get_lookup
 
-EMAIL_TEMPLATES = {
-    "Open Day Invite": {
-        "subject": "You're Invited — DCE Open Day 2026",
-        "body": """Dear {name},
 
-We are pleased to invite you to the DCE Open Day on {date}.
-
-Come explore our state-of-the-art campus, meet faculty, and learn about {programme} at Dhanalakshmi College of Engineering.
-
-Date: {date}
-Venue: DCE Campus, Tambaram, Chennai
-
-Register now or call us at 044-XXXXXXXX.
-
-Warm regards,
-DCE Admissions Team"""
-    },
-    "Application Follow-up": {
-        "subject": "Your DCE Application — Next Steps",
-        "body": """Dear {name},
-
-Thank you for your interest in DCE. Your enquiry for {programme} has been received.
-
-Kindly complete your application by submitting the required documents at our admission office or online portal.
-
-For queries, call: 044-XXXXXXXX
-
-Best regards,
-DCE Admissions"""
-    },
-    "Custom": {"subject": "", "body": ""},
-}
+def load_email_templates(sb) -> dict:
+    """Load email templates dynamically from settings table.
+    Each row: key=template name, value=JSON {subject, body}
+    """
+    try:
+        rows = sb.table("settings").select("key, value") \
+            .eq("category", "email_template").eq("is_active", True) \
+            .order("key").execute().data or []
+        result = {}
+        for r in rows:
+            try:
+                result[r["key"]] = json.loads(r["value"])
+            except Exception:
+                result[r["key"]] = {"subject": "", "body": r["value"]}
+        return result
+    except:
+        return {"Custom": {"subject": "", "body": ""}}
 
 
 def load_recipients(sb, status_filter, dept_filter):
@@ -50,13 +38,14 @@ def load_recipients(sb, status_filter, dept_filter):
             q = q.in_("department_interested", dept_filter)
         return q.execute().data or []
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error loading recipients: {e}")
         return []
 
 
 def show():
     sb = get_supabase()
-    DEPARTMENTS = get_lookup('department')
+    DEPARTMENTS = get_lookup("department")
+    templates   = load_email_templates(sb)
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -67,6 +56,7 @@ def show():
         </p>
     </div>""", unsafe_allow_html=True)
 
+    # ── Audience ──────────────────────────────────────────────
     st.subheader("Audience")
     fc1, fc2 = st.columns(2)
     f_status = fc1.multiselect("By Status",     APPLICANT_STATUSES)
@@ -77,37 +67,50 @@ def show():
 
     if recipients:
         with st.expander("Preview recipients"):
-            df = pd.DataFrame(recipients)[["full_name","email","mobile","status"]]
-            df.columns = ["Name","Email","Mobile","Status"]
+            df = pd.DataFrame(recipients)[["full_name", "email", "mobile", "status"]]
+            df.columns = ["Name", "Email", "Mobile", "Status"]
             st.dataframe(df, use_container_width=True, hide_index=True)
 
     st.divider()
+
+    # ── Compose ───────────────────────────────────────────────
     st.subheader("Compose Email")
 
-    template_name = st.selectbox("Template", list(EMAIL_TEMPLATES.keys()))
-    tpl = EMAIL_TEMPLATES[template_name]
+    template_names = list(templates.keys()) if templates else ["Custom"]
+    template_sel   = st.selectbox("Template", template_names)
+    tpl            = templates.get(template_sel, {"subject": "", "body": ""})
 
-    subject = st.text_input("Subject *", value=tpl["subject"])
-    body    = st.text_area("Email Body *", value=tpl["body"], height=250)
+    subject = st.text_input("Subject *", value=tpl.get("subject", ""))
+    body    = st.text_area("Email Body *", value=tpl.get("body", ""), height=250,
+                            help="Use {name}, {programme}, {date} as dynamic placeholders")
 
-    if recipients:
+    if recipients and body.strip():
         sample = recipients[0]
         with st.expander("📄 Preview (first recipient)"):
-            preview = body\
-                .replace("{name}", sample["full_name"])\
-                .replace("{programme}", sample.get("programme_interested",""))\
-                .replace("{date}", "30 Jun 2026")
+            preview = body \
+                .replace("{name}",      sample["full_name"]) \
+                .replace("{programme}", sample.get("programme_interested", "")) \
+                .replace("{date}",      date.today().strftime("%d %b %Y"))
             st.text(preview)
 
     st.divider()
-    st.warning("⚠️ Connect an SMTP / SendGrid / AWS SES account in Settings to enable sending.")
+    st.warning(
+        "⚠️ Connect an SMTP / SendGrid / AWS SES account in Settings & Admin → General "
+        "to enable actual sending."
+    )
 
-    if st.button(f"📧 Send to {len(recipients)} Recipient(s)",
-                 type="primary",
-                 disabled=not recipients or not subject.strip() or not body.strip()):
-        st.info("Email API not yet configured. Add SMTP settings in Settings & Admin.")
+    col_send, col_export = st.columns(2)
+    if col_send.button(
+        f"📧 Send to {len(recipients)} Recipient(s)",
+        type="primary", use_container_width=True,
+        disabled=not recipients or not subject.strip() or not body.strip()
+    ):
+        st.info("Email API not configured — add SMTP/SendGrid credentials in Settings & Admin.")
 
     if recipients:
-        df_exp = pd.DataFrame(recipients)[["full_name","email","mobile","status"]]
-        csv = df_exp.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Export Email List (CSV)", csv, "email_list.csv","text/csv")
+        df_exp = pd.DataFrame(recipients)[["full_name", "email", "mobile", "status"]]
+        csv    = df_exp.to_csv(index=False).encode("utf-8")
+        col_export.download_button(
+            "⬇️ Export Email List (CSV)", csv, "email_list.csv", "text/csv",
+            use_container_width=True
+        )
