@@ -6,7 +6,6 @@ from db import get_supabase
 from config import MAROON, GOLD, CREAM
 from db import get_supabase, get_lookup, get_fee_structure
 
-PAYMENT_MODES  = ["Cash", "DD", "Online Transfer", "UPI", "Cheque"]
 
 
 def load_enrolled(sb):
@@ -52,7 +51,7 @@ def show():
 
     # ── Tab 1: Fee structure ──────────────────────────────────
     with tab_structure:
-        st.subheader("Fee Structure (Annual) — 2026-27")
+        st.subheader("Fee Structure (Annual)")
         fc1, fc2 = st.columns(2)
         sel_prog = fc1.selectbox("Programme", PROGRAMMES, key="fs_prog")
         sel_dept = fc2.selectbox("Department", DEPARTMENTS, key="fs_dept")
@@ -120,7 +119,7 @@ def show():
                             "payment_mode":  payment_mode,
                             "payment_date":  payment_date.isoformat(),
                             "receipt_no":    receipt_no.strip() or None,
-                            "academic_year": "2026-27",
+                            "academic_year": get_academic_year(),
                             "remarks":       remarks.strip() or None,
                         }).execute()
                         # Update status to Fee Paid

@@ -2,9 +2,8 @@
 import streamlit as st
 import pandas as pd
 from config import MAROON, GOLD, CREAM
-from db import get_supabase, get_document_types
+from db import get_lookup, get_supabase, get_document_types
 
-DOC_STATUS = ["Not Submitted", "Submitted", "Verified", "Rejected"]
 
 STATUS_COLOR = {
     "Not Submitted": "#95A5A6",
@@ -92,7 +91,7 @@ def show():
     doc_data = load_doc_status(sb, applicant_id)
 
     # Summary badges
-    counts = {s: 0 for s in DOC_STATUS}
+    counts = {s: 0 for s in get_lookup("doc_status")}
     for v in doc_data.values():
         counts[v] = counts.get(v, 0) + 1
 
@@ -121,8 +120,8 @@ def show():
             col_doc, col_status = st.columns([3, 2])
             col_doc.markdown(f"**{doc}**")
             new_status = col_status.selectbox(
-                doc, DOC_STATUS,
-                index=DOC_STATUS.index(current),
+                doc, get_lookup("doc_status"),
+                index=get_lookup("doc_status").index(current),
                 key=f"doc_{doc}",
                 label_visibility="collapsed"
             )

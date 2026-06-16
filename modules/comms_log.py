@@ -2,12 +2,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import get_supabase
+from db import get_lookup, get_supabase
 from config import MAROON, GOLD, CREAM
 
-COMM_TYPES   = ["Call","SMS","WhatsApp","Email","Walk-in","Video Call","Other"]
-COMM_OUTCOME = ["Answered","Not Answered","Interested","Not Interested",
-                "Callback Requested","Left Message","Enrolled","Other"]
 
 
 def load_applicants(sb):
@@ -54,7 +51,7 @@ def show():
     with tab_log:
         fc1, fc2, fc3 = st.columns(3)
         filter_appl = fc1.selectbox("Applicant", ["All"] + list(applicants.keys()), key="cl_appl")
-        filter_type = fc2.selectbox("Type", ["All"] + COMM_TYPES, key="cl_type")
+        filter_type = fc2.selectbox("Type", ["All"] + get_lookup("comm_type"), key="cl_type")
         limit       = fc3.number_input("Show last", min_value=10, max_value=500,
                                         value=50, step=10)
 
@@ -94,10 +91,10 @@ def show():
             chosen = st.selectbox("Applicant *", ["—"] + list(applicants.keys()))
             cc1, cc2, cc3 = st.columns(3)
             comm_date = cc1.date_input("Date *", value=date.today())
-            comm_type = cc2.selectbox("Type *", COMM_TYPES)
+            comm_type = cc2.selectbox("Type *", get_lookup("comm_type"))
             duration  = cc3.number_input("Duration (mins)", min_value=1, max_value=180,
                                           value=10, step=5)
-            outcome = st.selectbox("Outcome *", COMM_OUTCOME)
+            outcome = st.selectbox("Outcome *", get_lookup("comm_outcome"))
             next_action = st.text_input("Next Action",
                                          placeholder="e.g. Send brochure, call after 3 days")
             notes = st.text_area("Notes", height=80)

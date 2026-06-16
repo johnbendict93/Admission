@@ -2,11 +2,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
-from db import get_supabase
+from db import get_lookup, get_supabase
 from config import MAROON, GOLD, CREAM
 
-PRIORITIES = ["Urgent", "High", "Normal", "Low"]
-FU_STATUS  = ["Pending", "In Progress", "Done", "Cancelled"]
 PRIORITY_ICON = {"Urgent":"🔴","High":"🟠","Normal":"🟡","Low":"🟢"}
 
 
@@ -63,7 +61,7 @@ def show():
             fc1, fc2, fc3 = st.columns(3)
             due_date = fc1.date_input("Due Date *",
                                        value=date.today() + timedelta(days=1))
-            priority = fc2.selectbox("Priority", PRIORITIES)
+            priority = fc2.selectbox("Priority", get_lookup("priority"))
             fu_type  = fc3.selectbox("Type", ["Call","WhatsApp","Email",
                                                "Visit","SMS","Other"])
             notes = st.text_area("Notes", height=68,
@@ -92,8 +90,8 @@ def show():
     # ── List ──────────────────────────────────────────────────
     with tab_list:
         lc1, lc2, lc3 = st.columns(3)
-        f_status   = lc1.multiselect("Status",   FU_STATUS,  default=["Pending","In Progress"])
-        f_priority = lc2.multiselect("Priority", PRIORITIES)
+        f_status   = lc1.multiselect("Status",   get_lookup("followup_status"),  default=["Pending","In Progress"])
+        f_priority = lc2.multiselect("Priority", get_lookup("priority"))
         overdue    = lc3.checkbox("Overdue only")
 
         fus = load_followups(sb, f_status or None, f_priority or None, overdue)
@@ -116,8 +114,8 @@ def show():
                 tc2.markdown(f"📅 {'🔴 **OVERDUE** ' if overdue_flag else ''}{due}")
                 tc3.markdown(f"`{fu['status']}`")
                 # Inline status update
-                new_s = tc4.selectbox("", FU_STATUS,
-                                       index=FU_STATUS.index(fu["status"]),
+                new_s = tc4.selectbox("", get_lookup("followup_status"),
+                                       index=get_lookup("followup_status").index(fu["status"]),
                                        key=f"fu_{fu['id']}",
                                        label_visibility="collapsed")
                 if new_s != fu["status"]:

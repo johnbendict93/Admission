@@ -2,11 +2,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
-from db import get_supabase
+from db import get_lookup, get_supabase
 from config import MAROON, GOLD, CREAM
 
-PRIORITIES = ["Urgent", "High", "Normal", "Low"]
-TASK_STATUS = ["Todo", "In Progress", "Done", "Cancelled"]
 PRIORITY_ICON = {"Urgent":"🔴","High":"🟠","Normal":"🟡","Low":"🟢"}
 
 

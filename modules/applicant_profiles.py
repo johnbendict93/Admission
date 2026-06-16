@@ -5,8 +5,6 @@ from datetime import date
 from config import MAROON, GOLD, CREAM
 from db import get_supabase, get_lookup, get_applicant_statuses
 
-GENDERS   = ["Male", "Female", "Other"]
-BLOOD_GRP = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
 
 STATUS_COLORS = {
     "New Lead": "#3498DB", "Contacted": "#9B59B6", "Interested": "#27AE60",
@@ -172,8 +170,8 @@ def show():
                 new_name   = ec1.text_input("Full Name", p.get("full_name",""))
                 new_mobile = ec2.text_input("Mobile",    p.get("mobile",""))
                 new_email  = ec1.text_input("Email",     p.get("email","") or "")
-                new_gender = ec2.selectbox("Gender", [""]+GENDERS,
-                    index=([""]+GENDERS).index(p.get("gender","")) if p.get("gender") in GENDERS else 0)
+                new_gender = ec2.selectbox("Gender", [""]+get_lookup("gender"),
+                    index=([""]+get_lookup("gender")).index(p.get("gender","")) if p.get("gender") in get_lookup("gender") else 0)
                 new_prog   = ec1.selectbox("Programme", [""]+PROGRAMMES,
                     index=([""]+PROGRAMMES).index(p.get("programme_interested",""))
                     if p.get("programme_interested") in PROGRAMMES else 0)

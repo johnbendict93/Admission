@@ -2,28 +2,10 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
-from db import get_supabase
+from db import get_lookup, get_supabase
 from config import MAROON, GOLD, CREAM
 
-EVENT_TYPES = ["Open Day","Counseling Camp","Deadline","Exam","Orientation",
-               "Fee Due","Meeting","Holiday","Other"]
 
-# Static DCE academic calendar 2026-27 seed events
-SEED_EVENTS = [
-    {"date": "2026-07-01", "title": "Commencement of Classes 2026-27",     "type": "Orientation"},
-    {"date": "2026-07-15", "title": "Last Date for Fee Payment (1st Inst)","type": "Fee Due"},
-    {"date": "2026-08-15", "title": "Independence Day — Holiday",           "type": "Holiday"},
-    {"date": "2026-09-05", "title": "Teachers Day Celebration",             "type": "Other"},
-    {"date": "2026-10-02", "title": "Gandhi Jayanti — Holiday",             "type": "Holiday"},
-    {"date": "2026-11-01", "title": "Internal Assessment I",                "type": "Exam"},
-    {"date": "2026-11-14", "title": "Children's Day Event",                 "type": "Other"},
-    {"date": "2026-12-25", "title": "Christmas — Holiday",                  "type": "Holiday"},
-    {"date": "2027-01-15", "title": "Pongal Holidays Begin",                "type": "Holiday"},
-    {"date": "2027-01-26", "title": "Republic Day — Holiday",               "type": "Holiday"},
-    {"date": "2027-02-01", "title": "Internal Assessment II",               "type": "Exam"},
-    {"date": "2027-03-15", "title": "End Semester Exam Begin",              "type": "Exam"},
-    {"date": "2027-04-01", "title": "Last Date for Fee Payment (2nd Inst)", "type": "Fee Due"},
-]
 
 
 def show():
@@ -34,15 +16,15 @@ def show():
          padding:18px 24px;border-radius:10px;margin-bottom:20px;'>
         <h2 style='color:{GOLD};margin:0;'>📅 Calendar & Events</h2>
         <p style='color:#F5F0E8;margin:4px 0 0;font-size:0.9rem;'>
-            DCE academic calendar and admission events for 2026-27.
+            DCE academic calendar and admission events.
         </p>
     </div>""", unsafe_allow_html=True)
 
     tab_upcoming, tab_add = st.tabs(["📅 Upcoming Events", "➕ Add Event"])
 
     with tab_upcoming:
-        # Merge seed events with any stored follow-up events
-        events = list(SEED_EVENTS)
+        # Load events from follow_ups table
+        events = []
         try:
             fu_rows = sb.table("follow_ups").select(
                 "title, due_date, follow_up_type"
@@ -60,7 +42,7 @@ def show():
 
         # Filter controls
         fc1, fc2 = st.columns(2)
-        f_type = fc1.multiselect("Filter by Type", EVENT_TYPES + ["Follow-up"])
+        f_type = fc1.multiselect("Filter by Type", get_lookup("event_type") + ["Follow-up"])
         today_str = date.today().isoformat()
         show_past = fc2.checkbox("Include past events", value=False)
 
@@ -99,7 +81,7 @@ def show():
             title     = st.text_input("Event Title *", placeholder="e.g. Walk-in Camp at Velachery")
             ec1, ec2  = st.columns(2)
             event_date = ec1.date_input("Date *", value=date.today() + timedelta(days=7))
-            event_type = ec2.selectbox("Type", EVENT_TYPES)
+            event_type = ec2.selectbox("Type", get_lookup("event_type"))
             notes      = st.text_area("Notes", height=68)
 
             if st.form_submit_button("💾 Add Event", type="primary",

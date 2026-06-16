@@ -73,7 +73,7 @@ def show():
                 sch_amount = sc2.number_input("Amount (₹)", min_value=0,
                                                max_value=500000, step=500, value=0)
                 sc3, sc4 = st.columns(2)
-                sch_year   = sc3.text_input("Academic Year", value="2026-27")
+                sch_year   = sc3.text_input("Academic Year", value=get_academic_year())
                 sch_status = sc4.selectbox("Status", SCHOLARSHIP_STATUS)
                 ref_no     = st.text_input("Application / Reference No",
                                             placeholder="e.g. TNGOVT-2026-XXXXX")

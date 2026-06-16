@@ -144,7 +144,7 @@ def show():
                                 "room_number":    sel_room.strip(),
                                 "room_type":      room_type,
                                 "allotment_date": date.today().isoformat(),
-                                "academic_year":  "2026-27",
+                                "academic_year": get_academic_year(),
                                 "status":         "Active",
                             }).execute()
                             st.success(

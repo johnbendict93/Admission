@@ -2,12 +2,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import get_supabase
+from db import get_lookup, get_supabase
 from config import MAROON, GOLD, CREAM
 
-SESSION_TYPES = ["Walk-in", "Phone", "Video Call", "Follow-up Visit", "Parent Meeting"]
-OUTCOMES      = ["Interested", "Needs Time", "Confirmed", "Not Interested",
-                 "Enrolled", "Documents Collected", "Fee Discussion"]
 
 
 def load_applicants(sb):
@@ -63,10 +60,10 @@ def show():
 
                 c1, c2, c3 = st.columns(3)
                 session_date = c1.date_input("Session Date *", value=date.today())
-                session_type = c2.selectbox("Session Type *", SESSION_TYPES)
+                session_type = c2.selectbox("Session Type *", get_lookup("session_type"))
                 duration     = c3.number_input("Duration (mins)", min_value=5,
                                                 max_value=240, value=30, step=5)
-                outcome      = st.selectbox("Outcome *", OUTCOMES)
+                outcome      = st.selectbox("Outcome *", get_lookup("session_outcome"))
                 next_action  = st.text_input("Next Action",
                     placeholder="e.g. Send fee structure, call after 2 days")
                 remarks      = st.text_area("Session Notes", height=80,
