@@ -5,12 +5,6 @@ from datetime import date
 from config import MAROON, GOLD, CREAM
 from db import get_supabase, get_lookup
 
-APP_STAGES = [
-    "Form Submitted", "Documents Uploaded", "Under Review",
-    "Merit Listed", "Seat Allotted", "Fee Paid", "Enrolled", "Rejected"
-]
-
-
 def load_applications(sb, search="", stage_filter=None, dept_filter=None):
     try:
         q = sb.table("applications").select(
@@ -61,6 +55,7 @@ def show():
     DEPARTMENTS = get_lookup('department')
     PROGRAMMES  = get_lookup('programme')
     CATEGORIES  = get_lookup('category')
+    APP_STAGES   = get_lookup('application_stage')
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);

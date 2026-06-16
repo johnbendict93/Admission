@@ -31,7 +31,7 @@ Priya Devi,9876543211,,Female,B.E.,ECE,Phone,91.0,Government Girls Hr Sec School
 Ramesh S,9876543212,,Male,B.Tech,AIDS,Social Media,78.0,
 """
 
-def validate_row(row, idx):
+def validate_row(row, idx, PROGRAMMES, DEPARTMENTS, LEAD_SOURCES):
     errors = []
     for col in REQUIRED:
         if col not in row or pd.isna(row[col]) or str(row[col]).strip() == "":
@@ -103,7 +103,7 @@ def show():
     # ── Validate ──────────────────────────────────────────────
     all_errors = []
     for i, row in df.iterrows():
-        all_errors.extend(validate_row(row, i))
+        all_errors.extend(validate_row(row, i, PROGRAMMES, DEPARTMENTS, LEAD_SOURCES))
 
     if all_errors:
         st.error(f"❌ {len(all_errors)} validation error(s) found — fix and re-upload:")
