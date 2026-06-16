@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import date, timedelta
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
-from db import get_supabase, get_lookup
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_applicant_statuses
 
 
 PALETTE = [MAROON, GOLD, "#C0392B", "#E8C97A", "#922B21",

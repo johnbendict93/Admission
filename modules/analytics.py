@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import date, timedelta
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
-from db import get_supabase, get_lookup
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_applicant_statuses
 
 
 # ── Data fetchers ─────────────────────────────────────────────
@@ -144,7 +144,7 @@ def show():
             empty_chart()
         else:
             counts = fdf["status"].value_counts()
-            ordered = [s for s in APPLICANT_STATUSES if s in counts.index]
+            ordered = [s for s in get_applicant_statuses() if s in counts.index]
             fig2 = go.Figure(go.Funnel(
                 y=ordered,
                 x=[counts[s] for s in ordered],

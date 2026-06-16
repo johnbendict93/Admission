@@ -11,6 +11,7 @@ from config import (
     APP_TITLE, COLLEGE_NAME, COLLEGE_SHORT,
     MAROON, GOLD, CREAM, MODULES,
 )
+from db import get_college_name, get_academic_year
 
 # ── Page config ──────────────────────────────────────────────
 st.set_page_config(
@@ -159,7 +160,7 @@ def show_login():
         <div style="text-align:center; margin-bottom:1.5rem;">
             <div style="font-size:3rem;">🎓</div>
             <h2 style="color:{MAROON}; margin:0.3rem 0 0.1rem 0;">DCE Admission CRM</h2>
-            <p style="color:#888; font-size:0.85rem; margin:0;">{COLLEGE_NAME}</p>
+            <p style="color:#888; font-size:0.85rem; margin:0;">{get_college_name()}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -242,7 +243,7 @@ def show_app():
 
         st.markdown(f"""
         <div style="text-align:center; font-size:0.65rem; color:#FFE4B5; padding-bottom:0.5rem;">
-            {COLLEGE_NAME}<br>Academic Year 2026–27
+            {get_college_name()}<br>Academic Year {get_academic_year()}
         </div>""", unsafe_allow_html=True)
 
     # ── Header bar ────────────────────────────────────────────
@@ -255,7 +256,7 @@ def show_app():
     st.markdown(f"""
     <div class="crm-header">
         <h1>{current_icon} {current_name}</h1>
-        <span>👤 {uname} &nbsp;|&nbsp; 🗓️ 2026–27</span>
+        <span>👤 {uname} &nbsp;|&nbsp; 🗓️ {get_academic_year()}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -272,9 +273,4 @@ def show_app():
 
 # ═══════════════════════════════════════════════════════════════
 # ROUTER
-# ═══════════════════════════════════════════════════════════════
-
-if is_logged_in():
-    show_app()
-else:
-    show_login()
+# ═════════════════════════════════════════════════════

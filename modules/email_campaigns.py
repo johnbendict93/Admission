@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 import json
 from datetime import date
-from config import MAROON, GOLD, APPLICANT_STATUSES
-from db import get_supabase, get_lookup
+from config import MAROON, GOLD
+from db import get_supabase, get_lookup, get_applicant_statuses
 
 
 def load_email_templates(sb) -> dict:
@@ -59,7 +59,7 @@ def show():
     # ── Audience ──────────────────────────────────────────────
     st.subheader("Audience")
     fc1, fc2 = st.columns(2)
-    f_status = fc1.multiselect("By Status",     APPLICANT_STATUSES)
+    f_status = fc1.multiselect("By Status")
     f_dept   = fc2.multiselect("By Department", DEPARTMENTS)
 
     recipients = load_recipients(sb, f_status or None, f_dept or None)

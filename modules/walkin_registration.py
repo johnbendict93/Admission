@@ -1,8 +1,8 @@
 """Module 03 — Walk-in Registration (100% dynamic from Supabase)"""
 import streamlit as st
 from datetime import date
-from db import get_supabase, get_lookup
-from config import MAROON, GOLD, APPLICANT_STATUSES
+from db import get_supabase, get_lookup, get_applicant_statuses
+from config import MAROON, GOLD
 
 
 def show():

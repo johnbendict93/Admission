@@ -2,8 +2,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from config import MAROON, GOLD, CREAM, APPLICANT_STATUSES
-from db import get_supabase, get_lookup
+from config import MAROON, GOLD, CREAM
+from db import get_supabase, get_lookup, get_applicant_statuses
 
 GENDERS   = ["Male", "Female", "Other"]
 BLOOD_GRP = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
@@ -90,7 +90,7 @@ def show():
 
     with col_list:
         search = st.text_input("🔎 Search", placeholder="Name / Mobile / Reg No")
-        f_status = st.multiselect("Status", APPLICANT_STATUSES, key="ap_status")
+        f_status = st.multiselect("Status", key="ap_status")
         f_dept   = st.multiselect("Dept",   DEPARTMENTS,        key="ap_dept")
 
         df = load_list(sb, search, f_status or None, f_dept or None)
@@ -180,8 +180,8 @@ def show():
                 new_dept   = ec2.selectbox("Department", [""]+DEPARTMENTS,
                     index=([""]+DEPARTMENTS).index(p.get("department_interested",""))
                     if p.get("department_interested") in DEPARTMENTS else 0)
-                new_status = ec1.selectbox("Status", APPLICANT_STATUSES,
-                    index=APPLICANT_STATUSES.index(status) if status in APPLICANT_STATUSES else 0)
+                new_status = ec1.selectbox("Status",
+                    index=get_applicant_statuses().index(status) if status in get_applicant_statuses() else 0)
                 new_cat    = ec2.selectbox("Category", [""]+CATEGORIES,
                     index=([""]+CATEGORIES).index(p.get("category",""))
                     if p.get("category") in CATEGORIES else 0)

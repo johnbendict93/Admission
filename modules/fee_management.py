@@ -57,13 +57,15 @@ def show():
         sel_prog = fc1.selectbox("Programme", PROGRAMMES, key="fs_prog")
         sel_dept = fc2.selectbox("Department", DEPARTMENTS, key="fs_dept")
 
-        fees  = FEE_STRUCTURE.get((sel_prog, sel_dept), {'Tuition': 85000, 'Special Fees': 15000, 'Hostel': 65000})
-        total = sum(fees.values())
-
-        rows = [{"Component": k, "Amount (₹)": f"₹{v:,.0f}"} for k, v in fees.items()]
-        rows.append({"Component": "TOTAL", "Amount (₹)": f"₹{total:,.0f}"})
-        st.table(pd.DataFrame(rows))
-        st.info("Payable in 2 instalments — 50% at admission, 50% before semester exam.")
+        fees = FEE_STRUCTURE.get((sel_prog, sel_dept), {})
+        if not fees:
+            st.warning('No fee structure defined for this combination. Add it in Settings & Admin → Fee Structure.')
+        else:
+            total = sum(fees.values())
+            rows = [{"Component": k, "Amount (₹)": f"₹{v:,.0f}"} for k, v in fees.items()]
+            rows.append({"Component": "TOTAL", "Amount (₹)": f"₹{total:,.0f}"})
+            st.table(pd.DataFrame(rows))
+            st.info('Payable in 2 instalments — 50% at admission, 50% before semester exam.')
 
     # ── Tab 2: Record payment ─────────────────────────────────
     with tab_payment:
@@ -76,7 +78,7 @@ def show():
         applicant = enrolled[chosen]
         prog      = applicant.get("programme_interested", "")
         dept      = applicant.get("department_interested", "")
-        fees      = FEE_STRUCTURE.get((prog, dept), {'Tuition': 85000, 'Special Fees': 15000, 'Hostel': 65000})
+        fees      = FEE_STRUCTURE.get((prog, dept), {})
         total_fee = sum(fees.values())
 
         # Show existing payments summary
@@ -95,7 +97,7 @@ def show():
         with st.form("payment_form", clear_on_submit=True):
             pc1, pc2, pc3 = st.columns(3)
             fee_component = pc1.selectbox("Fee Component",
-                                           list(fees.keys()) + ["Other"])
+                                           list(fees.keys()) + ["Other"] if fees else ["Other"])
             amount_paid   = pc2.number_input("Amount (₹)", min_value=1,
                                               max_value=200000, value=0, step=500)
             payment_mode  = pc3.selectbox("Payment Mode", PAYMENT_MODES)

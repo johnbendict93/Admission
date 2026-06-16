@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 import io
 from datetime import date
-from config import MAROON, GOLD, APPLICANT_STATUSES
-from db import get_supabase, get_lookup
+from config import MAROON, GOLD
+from db import get_supabase, get_lookup, get_applicant_statuses
 
 # Columns we accept (CSV header → DB column)
 COLUMN_MAP = {

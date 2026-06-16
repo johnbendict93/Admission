@@ -2,8 +2,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from config import MAROON, GOLD, APPLICANT_STATUSES
-from db import get_supabase, get_lookup, get_settings_by_category
+from config import MAROON, GOLD
+from db import get_supabase, get_lookup, get_settings_by_category, get_applicant_statuses
 
 
 def load_filtered_applicants(sb, status_filter, dept_filter, source_filter):
@@ -53,7 +53,7 @@ def show():
     # ── Step 1: Audience ──────────────────────────────────────
     st.subheader("Step 1 — Select Audience")
     fc1, fc2, fc3 = st.columns(3)
-    f_status = fc1.multiselect("By Status",      APPLICANT_STATUSES)
+    f_status = fc1.multiselect("By Status")
     f_dept   = fc2.multiselect("By Department",  DEPARTMENTS)
     f_source = fc3.multiselect("By Lead Source", LEAD_SOURCES)
 

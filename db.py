@@ -98,6 +98,35 @@ def get_document_types() -> list[str]:
         return []
 
 
+@st.cache_data(ttl=300)
+def get_applicant_statuses() -> list[str]:
+    """Return ordered applicant status workflow from Supabase.
+    Falls back to config list if Supabase returns nothing."""
+    from config import APPLICANT_STATUSES as _DEFAULT
+    try:
+        rows = get_supabase().table("lookup_values").select("value") \
+            .eq("type", "applicant_status").eq("is_active", True) \
+            .order("sort_order").execute().data or []
+        result = [r["value"] for r in rows]
+        return result if result else _DEFAULT
+    except:
+        return _DEFAULT
+
+
+@st.cache_data(ttl=300)
+def get_college_name() -> str:
+    """Return college name from Supabase general settings, fallback to config."""
+    from config import COLLEGE_NAME as _DEFAULT
+    return get_setting("general", "college_name", _DEFAULT)
+
+
+@st.cache_data(ttl=300)
+def get_academic_year() -> str:
+    """Return academic year from Supabase general settings, fallback to config."""
+    from config import ACADEMIC_YEAR as _DEFAULT
+    return get_setting("general", "academic_year", _DEFAULT)
+
+
 def clear_config_cache():
     """Call after updating settings to refresh cached values."""
     get_lookup.clear()
@@ -107,3 +136,6 @@ def clear_config_cache():
     get_seat_intake.clear()
     get_hostel_blocks.clear()
     get_document_types.clear()
+    get_applicant_statuses.clear()
+    get_college_name.clear()
+    get_academic_year.clear()
