@@ -560,7 +560,8 @@ def tab_users():
     st.subheader("User Management")
     st.caption("View and manage counselor/admin accounts. To create a new user, they must sign up via Supabase Auth first, then assign their role here.")
 
-    ROLES = ["admin", "counselor", "viewer"]
+    from db import get_lookup as _gl
+    ROLES = _gl("user_role") or ["admin", "counselor", "viewer"]
 
     users = (_sb().table("users")
              .select("id, email, full_name, role, is_active, created_at")
@@ -644,6 +645,14 @@ def show():
     with tab2:
         tab_lookups()
     with tab3:
-        tab_fees()
+        tab_fee_structure()
     with tab4:
-        tab_seats
+        tab_seat_intake()
+    with tab5:
+        tab_documents()
+    with tab6:
+        tab_hostel_blocks()
+    with tab7:
+        tab_templates()
+    with tab8:
+        tab_users()

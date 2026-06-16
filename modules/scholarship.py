@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from config import MAROON, GOLD, CREAM
-from db import get_supabase, get_lookup
+from db import get_supabase, get_lookup, get_academic_year
 
 
 def load_enrolled(sb):
@@ -32,9 +32,9 @@ def load_scholarships(sb, applicant_id=None):
 def show():
     sb = get_supabase()
     SCHOLARSHIP_TYPES  = get_lookup('scholarship_type')
-    SCHOLARSHIP_STATUS = ['Applied','Under Review','Approved','Disbursed','Rejected']
+    SCHOLARSHIP_STATUS = get_lookup('scholarship_status') or ['Applied','Under Review','Approved','Disbursed','Rejected']
     CATEGORIES         = get_lookup('category')
-    GOVT_CATS          = ['SC','SCA','ST','BC','BCM','MBC']
+    GOVT_CATS          = get_lookup('govt_category') or ['SC','SCA','ST','BC','BCM','MBC']
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -149,4 +149,4 @@ def show():
             st.dataframe(df_el, use_container_width=True, hide_index=True)
             csv = df_el.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Export CSV", csv,
-                               "scholarship_eligible.csv","text/csv")
+                file_name="eligible_scholarship_students.csv", mime="text/csv")
