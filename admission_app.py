@@ -7,15 +7,11 @@ Repo: https://github.com/johnbendict93/Admission
  
 import importlib
 import streamlit as st
-from streamlit_cookies_controller import CookieController
 from config import (
     APP_TITLE, COLLEGE_NAME, COLLEGE_SHORT,
     MAROON, GOLD, CREAM, MODULES,
 )
 from db import get_college_name, get_academic_year
- 
-# ── Cookie controller ────────────────────────────────────────
-_cc = CookieController()
  
 # ── Page config ──────────────────────────────────────────────
 _logged_in_check = "auth_user" in st.session_state
@@ -113,17 +109,15 @@ def get_sb():
     return get_supabase()
  
  
-def _save_cookie(access_token: str, refresh_token: str):
-    _cc.set("dce_access_token",  access_token)
-    _cc.set("dce_refresh_token", refresh_token)
+def _save_session_params(access_token: str, refresh_token: str):
+    """Persist tokens in URL query params (survive page refresh)."""
+    st.query_params["_at"] = access_token
+    st.query_params["_rt"] = refresh_token
  
  
-def _clear_cookie():
-    try:
-        _cc.remove("dce_access_token")
-        _cc.remove("dce_refresh_token")
-    except Exception:
-        pass
+def _clear_session_params():
+    st.query_params.pop("_at", None)
+    st.query_params.pop("_rt", None)
  
  
 def _load_user_profile(sb, email: str):
@@ -137,15 +131,18 @@ def _load_user_profile(sb, email: str):
         st.session_state["user_role"] = "admin"
  
  
-def restore_session_from_cookie():
-    """Restore auth session from cookie. Returns True if restored."""
+def restore_session_from_params():
+    """
+    On page refresh, restore Supabase session from URL query params.
+    Returns True if session was restored.
+    """
     if is_logged_in():
         return False
  
-    access_token  = _cc.get("dce_access_token")
-    refresh_token = _cc.get("dce_refresh_token") or ""
+    access_token  = st.query_params.get("_at", "")
+    refresh_token = st.query_params.get("_rt", "")
  
-    if not access_token:
+    if not refresh_token:
         return False
  
     try:
@@ -154,12 +151,16 @@ def restore_session_from_cookie():
         if resp and resp.user:
             st.session_state["auth_user"]  = resp.user
             st.session_state["auth_token"] = resp.session.access_token
-            _save_cookie(resp.session.access_token, resp.session.refresh_token)
+            # Rotate tokens in URL
+            _save_session_params(
+                resp.session.access_token,
+                resp.session.refresh_token,
+            )
             _load_user_profile(sb, resp.user.email)
             st.session_state.setdefault("active_module", "dashboard")
             return True
     except Exception:
-        _clear_cookie()
+        _clear_session_params()
  
     return False
  
@@ -171,7 +172,10 @@ def do_login(email: str, password: str):
         if resp.user:
             st.session_state["auth_user"]  = resp.user
             st.session_state["auth_token"] = resp.session.access_token
-            _save_cookie(resp.session.access_token, resp.session.refresh_token)
+            _save_session_params(
+                resp.session.access_token,
+                resp.session.refresh_token,
+            )
             _load_user_profile(sb, email)
             return True, None
         return False, "Invalid credentials."
@@ -183,7 +187,7 @@ def do_login(email: str, password: str):
  
  
 def do_logout():
-    _clear_cookie()
+    _clear_session_params()
     for key in ["auth_user", "auth_token", "user_name", "user_role", "active_module"]:
         st.session_state.pop(key, None)
     try:
@@ -314,7 +318,7 @@ def show_app():
 # ROUTER
 # ═══════════════════════════════════════════════════════════════
  
-if restore_session_from_cookie():
+if restore_session_from_params():
     st.rerun()
  
 if is_logged_in():
