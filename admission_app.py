@@ -317,6 +317,12 @@ def show_app():
 # ROUTER
 # ═══════════════════════════════════════════════════════════════
  
+# CookieManager needs one render cycle to inject its JS and read
+# browser cookies. Force a single silent rerun on first page load.
+if "cookie_init" not in st.session_state:
+    st.session_state["cookie_init"] = True
+    st.rerun()
+ 
 if restore_session_from_cookie():
     st.rerun()
  
