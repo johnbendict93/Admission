@@ -14,8 +14,8 @@ from config import (
 )
 from db import get_college_name, get_academic_year
  
-# ── Cookie manager (must be top-level, before set_page_config) ───
-_cm = stx.CookieManager(prefix="dce_crm_")
+# ── Cookie manager (top-level, before set_page_config) ───────
+_cm = stx.CookieManager()
  
 # ── Page config ──────────────────────────────────────────────
 _logged_in_check = "auth_user" in st.session_state
@@ -110,30 +110,26 @@ st.markdown(f"""
 # ═══════════════════════════════════════════════════════════════
  
 def get_sb():
-    """Return Supabase client (cached)."""
     from db import get_supabase
     return get_supabase()
  
  
 def _save_cookie(access_token: str, refresh_token: str):
-    """Persist tokens in browser cookie (30-day expiry)."""
     from datetime import datetime, timedelta
     exp = datetime.now() + timedelta(days=30)
-    _cm.set("access_token",  access_token,  expires_at=exp)
-    _cm.set("refresh_token", refresh_token, expires_at=exp)
+    _cm.set("dce_access_token",  access_token,  expires_at=exp)
+    _cm.set("dce_refresh_token", refresh_token, expires_at=exp)
  
  
 def _clear_cookie():
-    """Remove auth cookies."""
     try:
-        _cm.delete("access_token")
-        _cm.delete("refresh_token")
+        _cm.delete("dce_access_token")
+        _cm.delete("dce_refresh_token")
     except Exception:
         pass
  
  
 def _load_user_profile(sb, email: str):
-    """Pull full_name + role from users table into session_state."""
     row = sb.table("users").select("full_name, role")\
             .eq("email", email).execute().data
     if row:
@@ -145,15 +141,12 @@ def _load_user_profile(sb, email: str):
  
  
 def restore_session_from_cookie():
-    """
-    On every page load, try to restore auth from saved cookie.
-    Returns True if session was restored (caller should st.rerun()).
-    """
+    """Try to restore auth from saved cookie. Returns True if restored."""
     if is_logged_in():
         return False
  
-    access_token  = _cm.get("access_token")
-    refresh_token = _cm.get("refresh_token") or ""
+    access_token  = _cm.get("dce_access_token")
+    refresh_token = _cm.get("dce_refresh_token") or ""
  
     if not access_token:
         return False
@@ -164,7 +157,6 @@ def restore_session_from_cookie():
         if resp and resp.user:
             st.session_state["auth_user"]  = resp.user
             st.session_state["auth_token"] = resp.session.access_token
-            # Refresh cookie with potentially rotated tokens
             _save_cookie(resp.session.access_token, resp.session.refresh_token)
             _load_user_profile(sb, resp.user.email)
             st.session_state.setdefault("active_module", "dashboard")
@@ -176,7 +168,6 @@ def restore_session_from_cookie():
  
  
 def do_login(email: str, password: str):
-    """Attempt Supabase email+password sign-in."""
     sb = get_sb()
     try:
         resp = sb.auth.sign_in_with_password({"email": email, "password": password})
@@ -252,10 +243,8 @@ def show_login():
 # ═══════════════════════════════════════════════════════════════
  
 def show_app():
-    # Session defaults
     st.session_state.setdefault("active_module", "dashboard")
  
-    # ── Sidebar ───────────────────────────────────────────────
     with st.sidebar:
         st.markdown(f"""
         <div style="text-align:center; padding:1rem 0 0.5rem 0;">
@@ -266,7 +255,6 @@ def show_app():
         <hr style="border-color:{GOLD}33; margin:8px 0 4px 0;">
         """, unsafe_allow_html=True)
  
-        # User info
         uname = st.session_state.get("user_name", "User")
         urole = st.session_state.get("user_role", "—")
         st.markdown(f"""
@@ -276,7 +264,6 @@ def show_app():
         </div>
         """, unsafe_allow_html=True)
  
-        # Navigation
         sections: dict[str, list] = {}
         for name, icon, key, section in MODULES:
             sections.setdefault(section, []).append((name, icon, key))
@@ -305,12 +292,9 @@ def show_app():
             {get_college_name()}<br>Academic Year {get_academic_year()}
         </div>""", unsafe_allow_html=True)
  
-    # ── Header bar ────────────────────────────────────────────
     active = st.session_state.active_module
-    current_name = next(
-        (n for n, i, k, _ in MODULES if k == active), "Dashboard")
-    current_icon = next(
-        (i for n, i, k, _ in MODULES if k == active), "🏠")
+    current_name = next((n for n, i, k, _ in MODULES if k == active), "Dashboard")
+    current_icon = next((i for n, i, k, _ in MODULES if k == active), "🏠")
  
     st.markdown(f"""
     <div class="crm-header">
@@ -319,7 +303,6 @@ def show_app():
     </div>
     """, unsafe_allow_html=True)
  
-    # ── Module loader ─────────────────────────────────────────
     try:
         mod = importlib.import_module(f"modules.{active}")
         mod.show()
@@ -334,7 +317,6 @@ def show_app():
 # ROUTER
 # ═══════════════════════════════════════════════════════════════
  
-# Try to restore session from cookie on every page load
 if restore_session_from_cookie():
     st.rerun()
  
