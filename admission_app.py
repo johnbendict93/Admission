@@ -7,15 +7,15 @@ Repo: https://github.com/johnbendict93/Admission
  
 import importlib
 import streamlit as st
-import extra_streamlit_components as stx
+from streamlit_cookies_controller import CookieController
 from config import (
     APP_TITLE, COLLEGE_NAME, COLLEGE_SHORT,
     MAROON, GOLD, CREAM, MODULES,
 )
 from db import get_college_name, get_academic_year
  
-# ── Cookie manager (top-level, before set_page_config) ───────
-_cm = stx.CookieManager()
+# ── Cookie controller ────────────────────────────────────────
+_cc = CookieController()
  
 # ── Page config ──────────────────────────────────────────────
 _logged_in_check = "auth_user" in st.session_state
@@ -91,7 +91,6 @@ st.markdown(f"""
     text-align: center;
     color: {MAROON};
 }}
-/* Login page */
 .login-card {{
     max-width: 420px;
     margin: 6vh auto;
@@ -115,16 +114,14 @@ def get_sb():
  
  
 def _save_cookie(access_token: str, refresh_token: str):
-    from datetime import datetime, timedelta
-    exp = datetime.now() + timedelta(days=30)
-    _cm.set("dce_access_token",  access_token,  expires_at=exp)
-    _cm.set("dce_refresh_token", refresh_token, expires_at=exp)
+    _cc.set("dce_access_token",  access_token)
+    _cc.set("dce_refresh_token", refresh_token)
  
  
 def _clear_cookie():
     try:
-        _cm.delete("dce_access_token")
-        _cm.delete("dce_refresh_token")
+        _cc.remove("dce_access_token")
+        _cc.remove("dce_refresh_token")
     except Exception:
         pass
  
@@ -141,12 +138,12 @@ def _load_user_profile(sb, email: str):
  
  
 def restore_session_from_cookie():
-    """Try to restore auth from saved cookie. Returns True if restored."""
+    """Restore auth session from cookie. Returns True if restored."""
     if is_logged_in():
         return False
  
-    access_token  = _cm.get("dce_access_token")
-    refresh_token = _cm.get("dce_refresh_token") or ""
+    access_token  = _cc.get("dce_access_token")
+    refresh_token = _cc.get("dce_refresh_token") or ""
  
     if not access_token:
         return False
@@ -316,12 +313,6 @@ def show_app():
 # ═══════════════════════════════════════════════════════════════
 # ROUTER
 # ═══════════════════════════════════════════════════════════════
- 
-# CookieManager needs one render cycle to inject its JS and read
-# browser cookies. Force a single silent rerun on first page load.
-if "cookie_init" not in st.session_state:
-    st.session_state["cookie_init"] = True
-    st.rerun()
  
 if restore_session_from_cookie():
     st.rerun()
