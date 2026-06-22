@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from db import get_supabase, get_seat_intake
 from config import MAROON, GOLD, APPLICANT_STATUSES
-
+ 
 def fetch_kpis(sb):
     try:
         total = sb.table("applicants").select("id", count="exact").execute().count or 0
@@ -28,40 +28,43 @@ def fetch_kpis(sb):
     except:
         open_seats = 0
     return total, enrolled, pending_fu, open_seats
-
+ 
 def fetch_pipeline(sb):
     try:
         rows = sb.table("applicants").select("status").execute().data or []
         df = pd.DataFrame(rows)
         if df.empty:
             return pd.DataFrame()
-        return df["status"].value_counts().reset_index().rename(
-            columns={"index": "status", "status": "count", "count": "count"})
+        vc = df["status"].value_counts().reset_index()
+        vc.columns = ["status", "count"]
+        return vc
     except:
         return pd.DataFrame()
-
+ 
 def fetch_dept(sb):
     try:
         rows = sb.table("applications").select("department").execute().data or []
         df = pd.DataFrame(rows)
         if df.empty:
             return pd.DataFrame()
-        return df["department"].value_counts().reset_index().rename(
-            columns={"index": "department", "department": "count", "count": "count"})
+        vc = df["department"].value_counts().reset_index()
+        vc.columns = ["department", "count"]
+        return vc
     except:
         return pd.DataFrame()
-
+ 
 def fetch_lead_source(sb):
     try:
         rows = sb.table("applicants").select("lead_source").execute().data or []
         df = pd.DataFrame(rows)
         if df.empty:
             return pd.DataFrame()
-        return df["lead_source"].value_counts().reset_index().rename(
-            columns={"index": "lead_source", "lead_source": "count", "count": "count"})
+        vc = df["lead_source"].value_counts().reset_index()
+        vc.columns = ["lead_source", "count"]
+        return vc
     except:
         return pd.DataFrame()
-
+ 
 def fetch_todays_followups(sb):
     try:
         from datetime import date
@@ -73,12 +76,12 @@ def fetch_todays_followups(sb):
         return rows
     except:
         return []
-
-
+ 
+ 
 def show():
     sb = get_supabase()
     total, enrolled, pending_fu, open_seats = fetch_kpis(sb)
-
+ 
     # ── KPI row ──────────────────────────────────────────────
     c1, c2, c3, c4 = st.columns(4)
     kpis = [
@@ -95,12 +98,12 @@ def show():
                 <p>{label}</p>
             </div>
             """, unsafe_allow_html=True)
-
+ 
     st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-
+ 
     # ── Pipeline + Follow-ups ────────────────────────────────
     col_l, col_r = st.columns([2, 1])
-
+ 
     with col_l:
         st.subheader("📈 Application Pipeline")
         pipeline_df = fetch_pipeline(sb)
@@ -122,7 +125,7 @@ def show():
                               paper_bgcolor="rgba(0,0,0,0)",
                               plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig, use_container_width=True)
-
+ 
     with col_r:
         st.subheader("📋 Today's Follow-ups")
         fus = fetch_todays_followups(sb)
@@ -136,12 +139,12 @@ def show():
                             f"<small>Due: {fu['due_date'][:10]}</small>",
                             unsafe_allow_html=True)
                 st.divider()
-
+ 
     st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-
+ 
     # ── Dept enrolment + Lead source ────────────────────────
     col_a, col_b = st.columns(2)
-
+ 
     with col_a:
         st.subheader("🏫 Department-wise Applications")
         dept_df = fetch_dept(sb)
@@ -156,7 +159,7 @@ def show():
                                plot_bgcolor="rgba(0,0,0,0)",
                                xaxis_title="", yaxis_title="Count")
             st.plotly_chart(fig2, use_container_width=True)
-
+ 
     with col_b:
         st.subheader("📡 Lead Source Breakdown")
         src_df = fetch_lead_source(sb)
@@ -171,3 +174,5 @@ def show():
             fig3.update_layout(margin=dict(t=10, b=10), height=280,
                                paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig3, use_container_width=True)
+ 
+
