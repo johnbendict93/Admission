@@ -109,15 +109,16 @@ def get_sb():
     return get_supabase()
  
  
-def _save_session_params(access_token: str, refresh_token: str):
-    """Persist tokens in URL query params (survive page refresh)."""
-    st.query_params["_at"] = access_token
+def _save_session_params(refresh_token: str):
+    """Store only the short refresh token in the URL (avoids JWT length limits)."""
     st.query_params["_rt"] = refresh_token
  
  
 def _clear_session_params():
-    st.query_params.pop("_at", None)
-    st.query_params.pop("_rt", None)
+    try:
+        del st.query_params["_rt"]
+    except Exception:
+        pass
  
  
 def _load_user_profile(sb, email: str):
@@ -131,34 +132,53 @@ def _load_user_profile(sb, email: str):
         st.session_state["user_role"] = "admin"
  
  
+def _exchange_refresh_token(refresh_token: str) -> dict:
+    """
+    Call Supabase /auth/v1/token endpoint directly to exchange a
+    refresh token for a new access + refresh token pair.
+    """
+    import requests as _req
+    sb  = get_sb()
+    url = f"{sb.supabase_url}/auth/v1/token?grant_type=refresh_token"
+    headers = {
+        "apikey": sb.supabase_key,
+        "Content-Type": "application/json",
+    }
+    r = _req.post(url, headers=headers,
+                  json={"refresh_token": refresh_token}, timeout=10)
+    if r.status_code == 200:
+        return r.json()
+    raise Exception(f"Token refresh failed ({r.status_code}): {r.text}")
+ 
+ 
 def restore_session_from_params():
-    """
-    On page refresh, restore Supabase session from URL query params.
-    Returns True if session was restored.
-    """
+    """Restore Supabase session from URL refresh token. Returns True if restored."""
     if is_logged_in():
         return False
  
-    access_token  = st.query_params.get("_at", "")
     refresh_token = st.query_params.get("_rt", "")
- 
     if not refresh_token:
         return False
  
     try:
-        sb   = get_sb()
-        resp = sb.auth.set_session(access_token, refresh_token)
-        if resp and resp.user:
-            st.session_state["auth_user"]  = resp.user
-            st.session_state["auth_token"] = resp.session.access_token
-            # Rotate tokens in URL
-            _save_session_params(
-                resp.session.access_token,
-                resp.session.refresh_token,
-            )
-            _load_user_profile(sb, resp.user.email)
-            st.session_state.setdefault("active_module", "dashboard")
-            return True
+        data          = _exchange_refresh_token(refresh_token)
+        access_token  = data["access_token"]
+        new_rt        = data["refresh_token"]
+        user_email    = data["user"]["email"]
+ 
+        sb = get_sb()
+        sb.auth.set_session(access_token, new_rt)
+ 
+        st.session_state["auth_user"]  = data["user"]
+        st.session_state["auth_token"] = access_token
+ 
+        # Rotate refresh token in URL
+        _save_session_params(new_rt)
+ 
+        _load_user_profile(sb, user_email)
+        st.session_state.setdefault("active_module", "dashboard")
+        return True
+ 
     except Exception:
         _clear_session_params()
  
@@ -172,10 +192,7 @@ def do_login(email: str, password: str):
         if resp.user:
             st.session_state["auth_user"]  = resp.user
             st.session_state["auth_token"] = resp.session.access_token
-            _save_session_params(
-                resp.session.access_token,
-                resp.session.refresh_token,
-            )
+            _save_session_params(resp.session.refresh_token)
             _load_user_profile(sb, email)
             return True, None
         return False, "Invalid credentials."

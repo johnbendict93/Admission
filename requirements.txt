@@ -5,5 +5,4 @@ pandas>=2.0
 plotly>=5.18
 python-dotenv>=1.0
 Pillow>=10.0
-extra-streamlit-components
-streamlit-cookies-controller
+
