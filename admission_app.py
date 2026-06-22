@@ -14,11 +14,12 @@ from config import (
 from db import get_college_name, get_academic_year
 
 # ── Page config ──────────────────────────────────────────────
+_logged_in_check = "auth_user" in st.session_state
 st.set_page_config(
     page_title=APP_TITLE,
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded" if _logged_in_check else "collapsed",
 )
 
 # ── Global CSS ───────────────────────────────────────────────
