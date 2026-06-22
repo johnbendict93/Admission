@@ -4,15 +4,19 @@ DCE Admission CRM — Main Entry Point
 Run:  streamlit run admission_app.py
 Repo: https://github.com/johnbendict93/Admission
 """
-
+ 
 import importlib
 import streamlit as st
+import extra_streamlit_components as stx
 from config import (
     APP_TITLE, COLLEGE_NAME, COLLEGE_SHORT,
     MAROON, GOLD, CREAM, MODULES,
 )
 from db import get_college_name, get_academic_year
-
+ 
+# ── Cookie manager (must be top-level, before set_page_config) ───
+_cm = stx.CookieManager(prefix="dce_crm_")
+ 
 # ── Page config ──────────────────────────────────────────────
 _logged_in_check = "auth_user" in st.session_state
 st.set_page_config(
@@ -21,7 +25,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded" if _logged_in_check else "collapsed",
 )
-
+ 
 # ── Global CSS ───────────────────────────────────────────────
 st.markdown(f"""
 <style>
@@ -99,18 +103,78 @@ st.markdown(f"""
 }}
 </style>
 """, unsafe_allow_html=True)
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════════
 # AUTH HELPERS
 # ═══════════════════════════════════════════════════════════════
-
+ 
 def get_sb():
     """Return Supabase client (cached)."""
     from db import get_supabase
     return get_supabase()
-
-
+ 
+ 
+def _save_cookie(access_token: str, refresh_token: str):
+    """Persist tokens in browser cookie (30-day expiry)."""
+    from datetime import datetime, timedelta
+    exp = datetime.now() + timedelta(days=30)
+    _cm.set("access_token",  access_token,  expires_at=exp)
+    _cm.set("refresh_token", refresh_token, expires_at=exp)
+ 
+ 
+def _clear_cookie():
+    """Remove auth cookies."""
+    try:
+        _cm.delete("access_token")
+        _cm.delete("refresh_token")
+    except Exception:
+        pass
+ 
+ 
+def _load_user_profile(sb, email: str):
+    """Pull full_name + role from users table into session_state."""
+    row = sb.table("users").select("full_name, role")\
+            .eq("email", email).execute().data
+    if row:
+        st.session_state["user_name"] = row[0]["full_name"]
+        st.session_state["user_role"] = row[0]["role"]
+    else:
+        st.session_state["user_name"] = email
+        st.session_state["user_role"] = "admin"
+ 
+ 
+def restore_session_from_cookie():
+    """
+    On every page load, try to restore auth from saved cookie.
+    Returns True if session was restored (caller should st.rerun()).
+    """
+    if is_logged_in():
+        return False
+ 
+    access_token  = _cm.get("access_token")
+    refresh_token = _cm.get("refresh_token") or ""
+ 
+    if not access_token:
+        return False
+ 
+    try:
+        sb   = get_sb()
+        resp = sb.auth.set_session(access_token, refresh_token)
+        if resp and resp.user:
+            st.session_state["auth_user"]  = resp.user
+            st.session_state["auth_token"] = resp.session.access_token
+            # Refresh cookie with potentially rotated tokens
+            _save_cookie(resp.session.access_token, resp.session.refresh_token)
+            _load_user_profile(sb, resp.user.email)
+            st.session_state.setdefault("active_module", "dashboard")
+            return True
+    except Exception:
+        _clear_cookie()
+ 
+    return False
+ 
+ 
 def do_login(email: str, password: str):
     """Attempt Supabase email+password sign-in."""
     sb = get_sb()
@@ -119,15 +183,8 @@ def do_login(email: str, password: str):
         if resp.user:
             st.session_state["auth_user"]  = resp.user
             st.session_state["auth_token"] = resp.session.access_token
-            # Pull display name from users table
-            row = sb.table("users").select("full_name, role")\
-                    .eq("email", email).execute().data
-            if row:
-                st.session_state["user_name"] = row[0]["full_name"]
-                st.session_state["user_role"] = row[0]["role"]
-            else:
-                st.session_state["user_name"] = resp.user.email
-                st.session_state["user_role"] = "admin"
+            _save_cookie(resp.session.access_token, resp.session.refresh_token)
+            _load_user_profile(sb, email)
             return True, None
         return False, "Invalid credentials."
     except Exception as e:
@@ -135,26 +192,27 @@ def do_login(email: str, password: str):
         if "Invalid login credentials" in msg:
             return False, "Wrong email or password."
         return False, msg
-
-
+ 
+ 
 def do_logout():
-    for key in ["auth_user","auth_token","user_name","user_role","active_module"]:
+    _clear_cookie()
+    for key in ["auth_user", "auth_token", "user_name", "user_role", "active_module"]:
         st.session_state.pop(key, None)
     try:
         get_sb().auth.sign_out()
-    except:
+    except Exception:
         pass
     st.rerun()
-
-
+ 
+ 
 def is_logged_in() -> bool:
     return "auth_user" in st.session_state
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════════
 # LOGIN PAGE
 # ═══════════════════════════════════════════════════════════════
-
+ 
 def show_login():
     st.markdown(f"""
     <div class="login-card">
@@ -165,12 +223,12 @@ def show_login():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
+ 
     with st.form("login_form"):
         email    = st.text_input("Email", placeholder="you@dce.ac.in")
         password = st.text_input("Password", type="password")
         submit   = st.form_submit_button("Sign In", use_container_width=True, type="primary")
-
+ 
     if submit:
         if not email.strip() or not password.strip():
             st.error("Enter email and password.")
@@ -182,21 +240,21 @@ def show_login():
                 st.rerun()
             else:
                 st.error(f"Login failed: {err}")
-
+ 
     st.markdown("""
     <p style="text-align:center; font-size:0.8rem; color:#aaa; margin-top:1rem;">
         First time? Create your account via Supabase Auth → Settings &amp; Admin.
     </p>""", unsafe_allow_html=True)
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════════
 # MAIN APP (authenticated)
 # ═══════════════════════════════════════════════════════════════
-
+ 
 def show_app():
     # Session defaults
     st.session_state.setdefault("active_module", "dashboard")
-
+ 
     # ── Sidebar ───────────────────────────────────────────────
     with st.sidebar:
         st.markdown(f"""
@@ -207,22 +265,22 @@ def show_app():
         </div>
         <hr style="border-color:{GOLD}33; margin:8px 0 4px 0;">
         """, unsafe_allow_html=True)
-
+ 
         # User info
-        uname = st.session_state.get("user_name","User")
-        urole = st.session_state.get("user_role","—")
+        uname = st.session_state.get("user_name", "User")
+        urole = st.session_state.get("user_role", "—")
         st.markdown(f"""
         <div style="text-align:center; padding:4px 0 8px 0;">
             <div style="color:{GOLD}; font-size:0.8rem;">👤 {uname}</div>
             <div style="color:#FFE4B5; font-size:0.7rem;">{urole.upper()}</div>
         </div>
         """, unsafe_allow_html=True)
-
+ 
         # Navigation
         sections: dict[str, list] = {}
         for name, icon, key, section in MODULES:
             sections.setdefault(section, []).append((name, icon, key))
-
+ 
         for section, items in sections.items():
             st.markdown(f'<div class="sidebar-section">{section}</div>',
                         unsafe_allow_html=True)
@@ -236,31 +294,31 @@ def show_app():
                 ):
                     st.session_state.active_module = key
                     st.rerun()
-
+ 
         st.markdown(f'<hr style="border-color:{GOLD}33; margin-top:1rem;">',
                     unsafe_allow_html=True)
         if st.button("🚪 Sign Out", use_container_width=True):
             do_logout()
-
+ 
         st.markdown(f"""
         <div style="text-align:center; font-size:0.65rem; color:#FFE4B5; padding-bottom:0.5rem;">
             {get_college_name()}<br>Academic Year {get_academic_year()}
         </div>""", unsafe_allow_html=True)
-
+ 
     # ── Header bar ────────────────────────────────────────────
     active = st.session_state.active_module
     current_name = next(
         (n for n, i, k, _ in MODULES if k == active), "Dashboard")
     current_icon = next(
         (i for n, i, k, _ in MODULES if k == active), "🏠")
-
+ 
     st.markdown(f"""
     <div class="crm-header">
         <h1>{current_icon} {current_name}</h1>
         <span>👤 {uname} &nbsp;|&nbsp; 🗓️ {get_academic_year()}</span>
     </div>
     """, unsafe_allow_html=True)
-
+ 
     # ── Module loader ─────────────────────────────────────────
     try:
         mod = importlib.import_module(f"modules.{active}")
@@ -270,14 +328,19 @@ def show_app():
     except Exception as e:
         st.error(f"Error in module **{active}**: {e}")
         st.exception(e)
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════════
 # ROUTER
-# ═════════════════════════════════════════════════════
-
-
+# ═══════════════════════════════════════════════════════════════
+ 
+# Try to restore session from cookie on every page load
+if restore_session_from_cookie():
+    st.rerun()
+ 
 if is_logged_in():
     show_app()
 else:
     show_login()
+ 
+
