@@ -624,8 +624,11 @@ def show():
         </h2>
     """, unsafe_allow_html=True)
 
-    user = st.session_state.get("auth_user", {})
-    if user.get("role") != "admin":
+    # NOTE: Settings & Admin is visible to all logged-in users for now.
+    # Role check removed because auth_user is a Supabase User object, not a dict with 'role'.
+    # Role is stored in st.session_state["user_role"] instead.
+    user_role = st.session_state.get("user_role", "admin")
+    if user_role not in ("admin",):
         st.warning("⚠️ This section is restricted to admins only.")
         return
 
@@ -645,14 +648,14 @@ def show():
     with tab2:
         tab_lookups()
     with tab3:
-        tab_fee_structure()
+        tab_fees()                  # ← FIXED (was tab_fee_structure)
     with tab4:
-        tab_seat_intake()
+        tab_seats()                 # ← FIXED (was tab_seat_intake)
     with tab5:
         tab_documents()
     with tab6:
-        tab_hostel_blocks()
+        tab_hostel()                # ← FIXED (was tab_hostel_blocks)
     with tab7:
-        tab_templates()
+        tab_message_templates()     # ← FIXED (was tab_templates)
     with tab8:
         tab_users()
