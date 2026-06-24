@@ -8,9 +8,7 @@ from db import get_supabase, get_lookup, get_applicant_statuses
 
 
 def load_email_templates(sb) -> dict:
-    """Load email templates dynamically from settings table.
-    Each row: key=template name, value=JSON {subject, body}
-    """
+    """Load email templates dynamically from settings table."""
     try:
         rows = sb.table("settings").select("key, value") \
             .eq("category", "email_template").eq("is_active", True) \
@@ -45,6 +43,7 @@ def load_recipients(sb, status_filter, dept_filter):
 def show():
     sb = get_supabase()
     DEPARTMENTS = get_lookup("department")
+    STATUSES    = get_applicant_statuses()
     templates   = load_email_templates(sb)
 
     st.markdown(f"""
@@ -59,7 +58,7 @@ def show():
     # ── Audience ──────────────────────────────────────────────
     st.subheader("Audience")
     fc1, fc2 = st.columns(2)
-    f_status = fc1.multiselect("By Status")
+    f_status = fc1.multiselect("By Status", STATUSES)          # ← FIXED
     f_dept   = fc2.multiselect("By Department", DEPARTMENTS)
 
     recipients = load_recipients(sb, f_status or None, f_dept or None)

@@ -73,6 +73,7 @@ def show():
     PROGRAMMES   = get_lookup('programme')
     CATEGORIES   = get_lookup('category')
     LEAD_SOURCES = get_lookup('lead_source')
+    STATUSES     = get_applicant_statuses()
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -88,8 +89,8 @@ def show():
 
     with col_list:
         search = st.text_input("🔎 Search", placeholder="Name / Mobile / Reg No")
-        f_status = st.multiselect("Status", key="ap_status")
-        f_dept   = st.multiselect("Dept",   DEPARTMENTS,        key="ap_dept")
+        f_status = st.multiselect("Status", STATUSES, key="ap_status")   # ← FIXED
+        f_dept   = st.multiselect("Dept",   DEPARTMENTS, key="ap_dept")
 
         df = load_list(sb, search, f_status or None, f_dept or None)
         st.markdown(f"**{len(df)} applicant(s)**")
@@ -98,7 +99,6 @@ def show():
             st.info("No applicants found.")
             selected_id = None
         else:
-            # Build selection list
             options = {
                 f"{r['reg_number']} — {r['full_name']}": r["id"]
                 for _, r in df.iterrows()
@@ -171,15 +171,16 @@ def show():
                 new_mobile = ec2.text_input("Mobile",    p.get("mobile",""))
                 new_email  = ec1.text_input("Email",     p.get("email","") or "")
                 new_gender = ec2.selectbox("Gender", [""]+get_lookup("gender"),
-                    index=([""]+get_lookup("gender")).index(p.get("gender","")) if p.get("gender") in get_lookup("gender") else 0)
+                    index=([""]+get_lookup("gender")).index(p.get("gender",""))
+                    if p.get("gender") in get_lookup("gender") else 0)
                 new_prog   = ec1.selectbox("Programme", [""]+PROGRAMMES,
                     index=([""]+PROGRAMMES).index(p.get("programme_interested",""))
                     if p.get("programme_interested") in PROGRAMMES else 0)
                 new_dept   = ec2.selectbox("Department", [""]+DEPARTMENTS,
                     index=([""]+DEPARTMENTS).index(p.get("department_interested",""))
                     if p.get("department_interested") in DEPARTMENTS else 0)
-                new_status = ec1.selectbox("Status",
-                    index=get_applicant_statuses().index(status) if status in get_applicant_statuses() else 0)
+                new_status = ec1.selectbox("Status", STATUSES,
+                    index=STATUSES.index(status) if status in STATUSES else 0)
                 new_cat    = ec2.selectbox("Category", [""]+CATEGORIES,
                     index=([""]+CATEGORIES).index(p.get("category",""))
                     if p.get("category") in CATEGORIES else 0)

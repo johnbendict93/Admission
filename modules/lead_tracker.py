@@ -58,6 +58,7 @@ def show():
     DEPARTMENTS  = get_lookup('department')
     PROGRAMMES   = get_lookup('programme')
     LEAD_SOURCES = get_lookup('lead_source')
+    STATUSES     = get_applicant_statuses()
 
     st.markdown(f"""
     <div style='background:linear-gradient(90deg,{MAROON},{MAROON}cc);
@@ -71,7 +72,7 @@ def show():
     # ── Filters ───────────────────────────────────────────────
     with st.expander("🔍 Filters", expanded=True):
         fc1, fc2, fc3, fc4 = st.columns(4)
-        f_status   = fc1.multiselect("Status")
+        f_status   = fc1.multiselect("Status",       STATUSES)      # ← FIXED
         f_dept     = fc2.multiselect("Department",   DEPARTMENTS)
         f_prog     = fc3.multiselect("Programme",    PROGRAMMES)
         f_source   = fc4.multiselect("Lead Source",  LEAD_SOURCES)
@@ -109,7 +110,6 @@ def show():
     # ── Table with inline status update ──────────────────────
     st.divider()
 
-    # Render as styled HTML table (read-only) + separate update panel
     display_cols = ["reg_number", "full_name", "mobile",
                     "programme_interested", "department_interested",
                     "lead_source", "status", "created_at"]
@@ -120,7 +120,7 @@ def show():
     st.dataframe(show_df, use_container_width=True, hide_index=True,
                  column_config={
                      "Status": st.column_config.SelectboxColumn(
-                         "Status", options=get_applicant_statuses(), width="medium"
+                         "Status", options=STATUSES, width="medium"
                      )
                  })
 
@@ -134,12 +134,11 @@ def show():
     selected_reg = up_col1.selectbox("Select Reg No", reg_options)
 
     row = df[df["reg_number"] == selected_reg].iloc[0] if selected_reg else None
-    current_status = row["status"] if row is not None else get_applicant_statuses()[0]
+    current_status = row["status"] if row is not None else STATUSES[0]
 
     new_status = up_col2.selectbox(
-        "New Status",
-        index=get_applicant_statuses().index(current_status)
-        if current_status in get_applicant_statuses() else 0
+        "New Status", STATUSES,
+        index=STATUSES.index(current_status) if current_status in STATUSES else 0
     )
 
     note = st.text_input("Add note (optional)", placeholder="e.g. Called, interested in CSE")
