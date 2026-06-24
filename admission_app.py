@@ -96,6 +96,17 @@ st.markdown(f"""
     box-shadow: 0 8px 32px rgba(139,26,26,0.15);
     border-top: 6px solid {MAROON};
 }}
+/* Fix: show pointer cursor on all interactive Streamlit widgets */
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stSelectbox"] > div > div,
+div[data-testid="stMultiSelect"] > div,
+div[data-testid="stMultiSelect"] > div > div,
+div[data-testid="stDateInput"] > div,
+div[data-testid="stNumberInput"] > div button,
+div[data-testid="stRadio"] label,
+div[data-testid="stCheckbox"] label {{
+    cursor: pointer !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
