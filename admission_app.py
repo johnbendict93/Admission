@@ -130,6 +130,21 @@ def _clear_session_params():
         del st.query_params["_rt"]
     except Exception:
         pass
+    try:
+        del st.query_params["_mod"]
+    except Exception:
+        pass
+
+
+def _save_active_module(key: str):
+    """Persist active module in URL so refresh restores correct page."""
+    st.query_params["_mod"] = key
+
+
+def _restore_active_module():
+    """Read active module from URL params into session state."""
+    mod = st.query_params.get("_mod", "dashboard")
+    st.session_state["active_module"] = mod
 
 
 def _load_user_profile(sb, email: str):
@@ -189,12 +204,10 @@ def restore_session_from_params():
         _save_session_params(new_rt)
 
         _load_user_profile(sb, user_email)
-        st.session_state.setdefault("active_module", "dashboard")
+        _restore_active_module()
         return True
 
     except Exception:
-        # Only clear params on auth failure (bad/expired token),
-        # not on transient network errors
         _clear_session_params()
 
     return False
@@ -276,6 +289,9 @@ def show_login():
 # ═══════════════════════════════════════════════════════════════
 
 def show_app():
+    # Restore active module from URL if not already in session
+    if "active_module" not in st.session_state:
+        _restore_active_module()
     st.session_state.setdefault("active_module", "dashboard")
 
     with st.sidebar:
@@ -313,6 +329,7 @@ def show_app():
                     type="primary" if is_active else "secondary",
                 ):
                     st.session_state.active_module = key
+                    _save_active_module(key)
                     st.rerun()
 
         st.markdown(f'<hr style="border-color:{GOLD}33; margin-top:1rem;">',
