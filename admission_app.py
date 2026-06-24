@@ -8,8 +8,7 @@ Repo: https://github.com/johnbendict93/Admission
 import importlib
 import streamlit as st
 from config import (
-    APP_TITLE, COLLEGE_NAME, COLLEGE_SHORT,
-    MAROON, GOLD, CREAM, MODULES,
+    APP_TITLE, MAROON, GOLD, CREAM, MODULES,
 )
 from db import get_college_name, get_academic_year
 
@@ -298,8 +297,7 @@ def show_app():
         st.markdown(f"""
         <div style="text-align:center; padding:1rem 0 0.5rem 0;">
             <div style="font-size:2.2rem;">🎓</div>
-            <div style="color:{GOLD}; font-weight:700; font-size:1.1rem;">{COLLEGE_SHORT}</div>
-            <div style="color:#FFE4B5; font-size:0.7rem; margin-top:2px;">Admission CRM</div>
+            <div style="color:{GOLD}; font-weight:700; font-size:1.1rem;">{get_college_name()}</div>
         </div>
         <hr style="border-color:{GOLD}33; margin:8px 0 4px 0;">
         """, unsafe_allow_html=True)

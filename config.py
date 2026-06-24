@@ -1,4 +1,4 @@
-# config.py — DCE Admission CRM (static constants only)
+# config.py — Admission CRM (static constants only)
 # All dropdown lists, fee structure, seat intake etc. are now in Supabase
 # via db.get_lookup(), db.get_fee_structure(), db.get_seat_intake() etc.
 
@@ -9,10 +9,14 @@ CREAM   = "#F5F0E8"
 WHITE   = "#FFFFFF"
 DARK    = "#1A1A1A"
 
-# ── App identity (overridable via settings table) ─────────────
-COLLEGE_NAME  = "Dhanalakshmi College of Engineering"
-COLLEGE_SHORT = "DCE"
-APP_TITLE     = "DCE Admission CRM"
+# ── App identity ──────────────────────────────────────────────
+# College name, short name, and academic year are all dynamic —
+# read from Supabase settings table via db.get_college_name(),
+# db.get_college_short(), db.get_academic_year().
+# These are safe fallbacks only (used before Supabase is reachable).
+COLLEGE_NAME  = "Admission CRM"
+COLLEGE_SHORT = "Admission CRM"
+APP_TITLE     = "Admission CRM"   # browser tab — must be static (Streamlit limitation)
 ACADEMIC_YEAR = "2026-27"
 
 # ── Supabase table names ──────────────────────────────────────
